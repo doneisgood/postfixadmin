@@ -18,7 +18,7 @@ class DomainOidcHandler
 
     /**
      * Get OIDC config for this domain
-     * @return array|false Config array or false if not configured
+     * @return array|null Config array or null if not configured
      */
     public function get(): ?array
     {
@@ -90,6 +90,7 @@ class DomainOidcHandler
 
     /**
      * Get OIDC config by issuer URL (for callback routing)
+     * @return array|null Config array or null if not found
      */
     public static function getByIssuer(string $issuerUrl): ?array
     {

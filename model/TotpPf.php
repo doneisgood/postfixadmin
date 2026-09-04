@@ -486,6 +486,17 @@ class TotpPf
     }
 
     /**
+     * Get all TOTP exceptions in the system
+     *
+     * @return array List of all TOTP exceptions
+     */
+    public function getAllExceptions(): array
+    {
+        $totp_exception_address = table_by_key('totp_exception_address');
+        return db_query_all("SELECT * FROM $totp_exception_address");
+    }
+
+    /**
      * Get all TOTP exceptions that apply to a specific username
      *
      * This includes exceptions for:
