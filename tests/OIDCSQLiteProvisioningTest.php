@@ -96,12 +96,12 @@ class OIDCSQLiteProvisioningTest extends TestCase
 
         $result = db_query_one("SELECT created, modified FROM admin WHERE username = ?", [$email]);
 
-        // Verify created is a valid datetime
-        $created = DateTime::createFromFormat('Y-m-d H:i:s', $result['created']);
+        // Verify created is a valid datetime (PostgreSQL may include microseconds)
+        $created = DateTime::createFromFormat('Y-m-d H:i:s', $result['created']) ?: DateTime::createFromFormat('Y-m-d H:i:s.u', $result['created']);
         $this->assertNotFalse($created, 'created should be valid datetime');
 
         // Verify modified is a valid datetime
-        $modified = DateTime::createFromFormat('Y-m-d H:i:s', $result['modified']);
+        $modified = DateTime::createFromFormat('Y-m-d H:i:s', $result['modified']) ?: DateTime::createFromFormat('Y-m-d H:i:s.u', $result['modified']);
         $this->assertNotFalse($modified, 'modified should be valid datetime');
     }
 
