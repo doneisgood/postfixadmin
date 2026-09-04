@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Initiate OIDC login flow
  * Redirects user to Keycloak authorization endpoint
