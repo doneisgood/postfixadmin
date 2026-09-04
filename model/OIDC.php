@@ -146,6 +146,7 @@ class OIDC
 
         try {
             $decoded = JWT::decode($tokens['id_token'], JWK::parseKeySet($jwks));
+            /** @var array<string, mixed> $claims */
             $claims = json_decode(json_encode($decoded), true);
             if (!is_array($claims)) {
                 error_log('OIDC: ID token claims are not an array');
@@ -225,7 +226,8 @@ class OIDC
         if (!empty($headers)) {
             curl_setopt($ch, CURLOPT_HTTPHEADER, [$headers]);
         }
-        $response = curl_exec($ch);
+        /** @var string|false $response */
+        $response = curl_exec($ch) ?: false;
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($httpCode !== 200) {
@@ -243,7 +245,8 @@ class OIDC
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-        $response = curl_exec($ch);
+        /** @var string|false $response */
+        $response = curl_exec($ch) ?: false;
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($httpCode !== 200) {
