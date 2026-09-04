@@ -1844,7 +1844,7 @@ function db_query_one(string $sql, array $values = []): array|false
         return $ret;
     }
     // no row?
-    return null;
+    return false;
 }
 
 
