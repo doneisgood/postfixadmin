@@ -163,16 +163,16 @@ class DomainHandler extends PFAHandler
                 /*dont_write_to_db*/ 1,
                 /*select*/ $this->is_superadmin . ' as _can_delete'),
 
-            # Per-domain OIDC configuration
-            'oidc_enabled'     => self::pacol($super,     $super, 0,      'bool', 'oidc_enable'                  , ''                                 , 0),
-            'oidc_issuer_url'  => self::pacol($super,     $super, 0,      'text', 'oidc_issuer_url'              , 'oidc_issuer_url_desc'             , ''),
-            'oidc_client_id'   => self::pacol($super,     $super, 0,      'text', 'oidc_client_id'               , ''                                 , ''),
-            'oidc_client_secret' => self::pacol($super,   $super, 0,      'text', 'oidc_client_secret'           , ''                                 , ''),
-            'oidc_scopes'      => self::pacol($super,     $super, 0,      'text', 'oidc_scopes'                  , ''                                 , 'openid email profile'),
-            'oidc_login_button_text' => self::pacol($super, $super, 0, 'text', 'oidc_login_button_text'      , ''                                 , 'Login with SSO'),
-            'oidc_auto_provision' => self::pacol($super,  $super, 0,      'bool', 'oidc_auto_provision'          , 'oidc_auto_provision_desc'         , 0),
+            # Per-domain OIDC configuration (stored in domain_oidc table, not domain)
+            'oidc_enabled'     => self::pacol($super,     $super, 0,      'bool', 'oidc_enable'                  , ''                                 , 0, array(), 1, 1),
+            'oidc_issuer_url'  => self::pacol($super,     $super, 0,      'text', 'oidc_issuer_url'              , 'oidc_issuer_url_desc'             , '', array(), 1, 1),
+            'oidc_client_id'   => self::pacol($super,     $super, 0,      'text', 'oidc_client_id'               , ''                                 , '', array(), 1, 1),
+            'oidc_client_secret' => self::pacol($super,   $super, 0,      'text', 'oidc_client_secret'           , ''                                 , '', array(), 1, 1),
+            'oidc_scopes'      => self::pacol($super,     $super, 0,      'text', 'oidc_scopes'                  , ''                                 , 'openid email profile', array(), 1, 1),
+            'oidc_login_button_text' => self::pacol($super, $super, 0, 'text', 'oidc_login_button_text'      , ''                                 , 'Login with SSO', array(), 1, 1),
+            'oidc_auto_provision' => self::pacol($super,  $super, 0,      'bool', 'oidc_auto_provision'          , 'oidc_auto_provision_desc'         , 0, array(), 1, 1),
             'oidc_mfa_policy'  => self::pacol($super,     $super, 0,      'enum', 'oidc_mfa_policy'              , ''                                 , 'none',
-                /*options*/ array('none' => 'none', 'mfa_or_totp' => 'mfa_or_totp', 'idp_mfa' => 'idp_mfa')),
+                /*options*/ array('none' => 'none', 'mfa_or_totp' => 'mfa_or_totp', 'idp_mfa' => 'idp_mfa'), 1, 1),
         );
     }
 
