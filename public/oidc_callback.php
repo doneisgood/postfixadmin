@@ -1,4 +1,5 @@
 <?php
+
 /**
  * OIDC callback handler
  * Receives authorization code from Keycloak, validates token, logs user in
