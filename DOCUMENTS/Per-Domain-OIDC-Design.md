@@ -16,8 +16,8 @@ PR #1144 adds global OIDC — one IdP for all admins. This works for single-tena
 
 | Goal | Description |
 |------|-------------|
-| Master admin | Global IdP in config file grants super-admin (manage all domains) |
-| Domain admin | Per-domain IdP in database grants domain-scoped permissions |
+| Global OIDC | Config-file IdP lets any admin log in (permissions assigned by super-admin) |
+| Domain OIDC | Database-configured per-domain IdP grants domain-scoped permissions |
 | Migration path | Existing global OIDC users are not broken |
 | UI-managed | Super-admin configures per-domain OIDC through the web UI |
 
@@ -47,10 +47,10 @@ $CONF['oidc'] = [
 
 ## Configuration
 
-### Master (Global) OIDC — Config File
+### Global OIDC — Config File
 
 ```php
-// config.local.php — master IdP for super-admins
+// config.local.php — global OIDC for any admin
 $CONF['oidc'] = [
     'client_id'     => 'postfixadmin',
     'client_secret' => '...',
@@ -61,8 +61,8 @@ $CONF['oidc'] = [
 ```
 
 - Stays in `config.local.php` (not UI-managed)
-- Users authenticating via this IdP become **super-admins**
-- Same behavior as PR #1144 today
+- Users authenticating via this IdP get permissions that the super-admin already assigned them
+- If user doesn't exist yet and `oidc_auto_provision` is enabled, they get created as regular admin (not super-admin)
 
 ### Per-Domain OIDC — Database
 
@@ -104,16 +104,16 @@ ALTER TABLE admin ADD COLUMN oidc_sub VARCHAR(255);
 ```
 User visits login page
     ↓
-Sees "Login with SSO" button(s)
+Sees "Login with SSO" button (global) and/or per-domain buttons
     ↓
-Option A: Master IdP button → authenticate → super-admin
-Option B: Email entered → domain detected → domain IdP → domain-admin
+Option A: Global IdP button → authenticate → user gets their existing permissions
+Option B: Per-domain button (e.g., domain.com) → domain IdP → domain-admin
     ↓
 Callback validates token
     ↓
-Check issuer:
-    ├── Master issuer → superadmin = 1
-    └── Domain issuer → add to domain_admins for that domain
+Check if domain config exists:
+    ├── Domain IdP → add to domain_admins for that domain
+    └── Global IdP → use permissions already assigned by super-admin
 ```
 
 ## Identity Binding: issuer + sub (instead of email)
@@ -139,7 +139,7 @@ Check issuer:
 
 | Source | Behavior |
 |--------|----------|
-| Master IdP | Create admin with `superadmin = 1` (existing behavior) |
+| Global IdP | If user exists, use their permissions. If not and `oidc_auto_provision` is enabled, create regular admin (not super-admin) |
 | Domain IdP | Create admin + insert into `domain_admins` for that domain |
 | Domain IdP + no auto_provision | Reject login, "Contact administrator" |
 

@@ -77,12 +77,9 @@ if (($CONF['oidc_require_verified_email'] ?? false) && !($claims['email_verified
     exit;
 }
 
-// Determine if this is a master or domain IdP based on issuer
+// Look up user by oidc_issuer + oidc_sub (stable identity)
 $issuer = $claims['iss'] ?? '';
 $sub = $claims['sub'] ?? '';
-$isMasterIdp = empty($domainOidcConfig) && ($issuer === ($CONF['oidc']['issuer_url'] ?? ''));
-
-// Look up user by oidc_issuer + oidc_sub (stable identity)
 $username = '';
 $isSuperadmin = false;
 $table_admin = table_by_key('admin');
@@ -143,7 +140,7 @@ if (empty($username)) {
     $username = $email;
 
     // Domain IdP: create domain-admin, not super-admin
-    if ($domainOidcConfig && !$isMasterIdp) {
+    if ($domainOidcConfig) {
         $isSuperadmin = false;
         // Add to domain_admins for this domain
         $table_domain_admins = table_by_key('domain_admins');
@@ -151,10 +148,8 @@ if (empty($username)) {
             "INSERT INTO $table_domain_admins (username, domain, created, active) VALUES (?, ?, CURRENT_TIMESTAMP, 1) ON CONFLICT DO NOTHING",
             [$username, $domainOidcConfig['domain']]
         );
-    } else {
-        // Master IdP: super-admin
-        $isSuperadmin = true;
     }
+    // Global OIDC: don't change permissions - user was already created by super-admin
 }
 
 // Check if user is active
