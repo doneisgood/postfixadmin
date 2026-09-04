@@ -68,6 +68,11 @@ class OIDCAutoProvisioningTest extends TestCase
 
     public function setUp(): void
     {
+        // Skip on MySQL - these tests use SQLite/PostgreSQL-specific SQL
+        if (getenv('DATABASE') === 'mysql') {
+            $this->markTestSkipped('SQLite/PostgreSQL-specific test');
+        }
+        
         global $CONF;
         Config::write('oidc', [
             'client_id' => $this->testClientId,

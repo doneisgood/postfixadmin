@@ -12,6 +12,11 @@ class OIDCSQLiteProvisioningTest extends TestCase
 
     public function setUp(): void
     {
+        // Skip on MySQL - these tests use SQLite/PostgreSQL-specific SQL
+        if (getenv('DATABASE') === 'mysql') {
+            $this->markTestSkipped('SQLite/PostgreSQL-specific test');
+        }
+        
         // Clean up test user if exists
         db_execute("DELETE FROM admin WHERE username = ?", [$this->testEmail]);
     }
