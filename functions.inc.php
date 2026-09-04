@@ -1834,7 +1834,7 @@ function delete_admin_pref(string $username, string $key): void
  * @param array $values
  * @return array|false
  */
-function db_query_one(string $sql, array $values = []): array|false
+function db_query_one(string $sql, array $values = []): ?array
 {
     $r = db_query($sql, $values);
     $stmt = $r['result'];
@@ -1844,7 +1844,7 @@ function db_query_one(string $sql, array $values = []): array|false
         return $ret;
     }
     // no row?
-    return false;
+    return null;
 }
 
 

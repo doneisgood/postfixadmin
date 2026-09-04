@@ -32,7 +32,7 @@ class DomainOidcHandler
     public function exists(): bool
     {
         $config = $this->get();
-        return $config !== false;
+        return $config !== null;
     }
 
     /**

@@ -2299,7 +2299,7 @@ function upgrade_1855_mysql()
         ['table' => trim($quota2, '`')]
     );
 
-    $column_length = (int) (array_values($column ?? [])[0] ?? 0);
+    $column_length = (int) (array_values($column === false ? [] : $column)[0] ?? 0);
     if ($column_length !== 255) {
         return;
     }
