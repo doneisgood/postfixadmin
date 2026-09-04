@@ -21,6 +21,30 @@ PR #1144 adds global OIDC — one IdP for all admins. This works for single-tena
 | Migration path | Existing global OIDC users are not broken |
 | UI-managed | Super-admin configures per-domain OIDC through the web UI |
 
+## Current OIDC Config (from PR #1144)
+
+The following config options already exist and must be preserved:
+
+```php
+// config.local.php
+$CONF['additional_auth'] = ['oidc'];  // array of auth methods
+$CONF['oidc_auto_provision'] = false; // auto-create admin on first login
+$CONF['oidc_mfa'] = 'none';           // 'none', 'mfa_or_totp', 'idp_mfa'
+$CONF['oidc_mfa_methods'] = ['mfa', 'otp', 'totp', 'hotp', 'hwk', 'fido', 'face', 'retina', 'wia', 'sc'];
+$CONF['oidc_mfa_blacklist'] = [];     // overrides whitelist
+$CONF['oidc_require_verified_email'] = false;
+$CONF['oidc_cookie_samesite'] = 'Strict';
+
+$CONF['oidc'] = [
+    'client_id'     => '',
+    'client_secret' => '',
+    'issuer_url'    => '',
+    'redirect_uri'  => '',
+    'scopes'        => 'openid email profile',
+    'login_button_text' => 'Login with SSO',
+];
+```
+
 ## Configuration
 
 ### Master (Global) OIDC — Config File
@@ -51,24 +75,29 @@ CREATE TABLE domain_oidc (
     scopes VARCHAR(255) DEFAULT 'openid email profile',
     login_button_text VARCHAR(255) DEFAULT 'Login with SSO',
     auto_provision SMALLINT DEFAULT 0,
-    mfa_policy VARCHAR(50) DEFAULT 'none'
+    mfa_policy VARCHAR(50) DEFAULT 'none',
+    mfa_methods TEXT DEFAULT NULL,  -- comma-separated whitelist, NULL = use global
+    mfa_blacklist TEXT DEFAULT NULL -- comma-separated blacklist, NULL = use global
 );
 ```
 
 - Managed through Domain Edit UI
 - Only super-admins can configure
 - Per-domain MFA policy override
+- Per-domain MFA methods override (falls back to global if NULL)
 
 ### Admin Tracking
 
 ```sql
 ALTER TABLE admin ADD COLUMN oidc_issuer TEXT;
+ALTER TABLE admin ADD COLUMN oidc_sub VARCHAR(255);
 ```
 
 - Records which IdP created the admin account
 - NULL = local password user
 - Master issuer = super-admin
 - Domain issuer = domain-admin
+- **Identity binding by issuer+sub** (stable, unique) instead of email
 
 ## Login Flow
 
@@ -86,6 +115,25 @@ Check issuer:
     ├── Master issuer → superadmin = 1
     └── Domain issuer → add to domain_admins for that domain
 ```
+
+## Identity Binding: issuer + sub (instead of email)
+
+**Problem with email binding:**
+- Email can change in IdP → loses access
+- Email can be reused (old employee → new employee) → inherits access
+- Email is not globally unique across IdPs
+
+**Solution: issuer + sub**
+- `iss` (issuer): which IdP issued the token
+- `sub` (subject): stable unique user ID within that issuer
+- Never changes, even if email changes
+- Globally unique per issuer
+
+**Migration:**
+1. Add `oidc_issuer` and `oidc_sub` columns to `admin` table
+2. On first OIDC login, store `iss + sub` alongside email
+3. Look up users by `iss + sub` instead of email
+4. Email becomes display attribute only
 
 ## Auto-Provisioning
 
@@ -114,8 +162,9 @@ Check issuer:
 
 Existing global OIDC users:
 1. Their `oidc_issuer` is set to the master issuer
-2. They retain super-admin status
-3. No action required
+2. Their `oidc_sub` is set from the token
+3. They retain super-admin status
+4. No action required
 
 ## Open Questions
 
@@ -136,5 +185,6 @@ This is a follow-up to PR #1144. The global OIDC in that PR becomes the "master 
 | Domain Edit UI | 1-2 days |
 | Login flow changes | 1-2 days |
 | Auto-provisioning logic | 1 day |
+| Identity binding (issuer+sub) | 1 day |
 | Tests | 1-2 days |
-| **Total** | **5-8 days** |
+| **Total** | **6-9 days** |
