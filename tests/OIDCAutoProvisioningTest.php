@@ -72,7 +72,7 @@ class OIDCAutoProvisioningTest extends TestCase
         if (getenv('DATABASE') === 'mysql') {
             $this->markTestSkipped('SQLite/PostgreSQL-specific test');
         }
-        
+
         global $CONF;
         Config::write('oidc', [
             'client_id' => $this->testClientId,
