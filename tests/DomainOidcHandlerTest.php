@@ -16,6 +16,12 @@ class DomainOidcHandlerTest extends TestCase
             $this->markTestSkipped('SQLite/PostgreSQL-specific test');
         }
 
+        // Reset global OIDC config to known state
+        global $CONF;
+        $CONF['oidc_mfa'] = 'none';
+        $CONF['oidc_mfa_methods'] = ['mfa', 'otp', 'hwk'];
+        $CONF['oidc_mfa_blacklist'] = [];
+
         // Create tables
         db_execute("CREATE TABLE IF NOT EXISTS domain (
             domain VARCHAR(255) NOT NULL PRIMARY KEY,

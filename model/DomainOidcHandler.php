@@ -50,7 +50,7 @@ class DomainOidcHandler
             'scopes' => $config['scopes'] ?? 'openid email profile',
             'login_button_text' => $config['login_button_text'] ?? 'Login with SSO',
             'auto_provision' => $config['auto_provision'] ? 1 : 0,
-            'mfa_policy' => $config['mfa_policy'] ?? 'none',
+            'mfa_policy' => $config['mfa_policy'] ?? null,
             'mfa_methods' => $config['mfa_methods'] ?? null,
             'mfa_blacklist' => $config['mfa_blacklist'] ?? null,
         ];
