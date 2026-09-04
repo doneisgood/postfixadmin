@@ -77,27 +77,12 @@ if (($CONF['oidc_require_verified_email'] ?? false) && !($claims['email_verified
     exit;
 }
 
-// Look up user by oidc_issuer + oidc_sub (stable identity)
-$issuer = $claims['iss'] ?? '';
-$sub = $claims['sub'] ?? '';
+// Look up user by configured identity method
 $username = '';
 $isSuperadmin = false;
-$table_admin = table_by_key('admin');
 
-// Try to find user by issuer+sub first
-if ($issuer && $sub) {
-    $adminRecord = db_query_one(
-        "SELECT * FROM $table_admin WHERE oidc_issuer = ? AND oidc_sub = ?",
-        [$issuer, $sub]
-    );
-    if ($adminRecord) {
-        $username = $adminRecord['username'];
-        $isSuperadmin = ($adminRecord['superadmin'] ?? 0) == 1;
-    }
-}
-
-// Fall back to email lookup for existing users without issuer+sub
-if (empty($username)) {
+if (($CONF['oidc_identity'] ?? 'issuer_sub') === 'email' && !$domainOidcConfig) {
+    // Legacy: identify by email (backward compat) — global IdP only
     try {
         $adminHandler = new AdminHandler();
         $adminHandler->init($email);
@@ -108,6 +93,21 @@ if (empty($username)) {
         }
     } catch (\Exception $e) {
         // User not found
+    }
+} else {
+    // Secure: identify by issuer + sub (recommended)
+    $issuer = $claims['iss'] ?? '';
+    $sub = $claims['sub'] ?? '';
+
+    if ($issuer && $sub) {
+        $adminRecord = db_query_one(
+            "SELECT * FROM $table_admin WHERE oidc_issuer = ? AND oidc_sub = ?",
+            [$issuer, $sub]
+        );
+        if ($adminRecord) {
+            $username = $adminRecord['username'];
+            $isSuperadmin = ($adminRecord['superadmin'] ?? 0) == 1;
+        }
     }
 }
 
