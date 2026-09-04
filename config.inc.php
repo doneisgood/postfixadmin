@@ -805,7 +805,7 @@ $CONF['password_expiration'] = 'NO';
 // recovery links must not be constructed from untrusted HTTP request headers.
 $CONF['site_url'] = null;
 
-$CONF['version'] = '4.0.1';
+$CONF['version'] = '4.0.2';
 
 // Local password auth is always available.
 // Additional authentication methods can be enabled here.
