@@ -162,6 +162,17 @@ class DomainHandler extends PFAHandler
                 /*not_in_db*/ 0,
                 /*dont_write_to_db*/ 1,
                 /*select*/ $this->is_superadmin . ' as _can_delete'),
+
+            # Per-domain OIDC configuration
+            'oidc_enabled'     => self::pacol($super,     $super, 0,      'bool', 'oidc_enable'                  , ''                                 , 0),
+            'oidc_issuer_url'  => self::pacol($super,     $super, 0,      'text', 'oidc_issuer_url'              , 'oidc_issuer_url_desc'             , ''),
+            'oidc_client_id'   => self::pacol($super,     $super, 0,      'text', 'oidc_client_id'               , ''                                 , ''),
+            'oidc_client_secret' => self::pacol($super,   $super, 0,      'text', 'oidc_client_secret'           , ''                                 , ''),
+            'oidc_scopes'      => self::pacol($super,     $super, 0,      'text', 'oidc_scopes'                  , ''                                 , 'openid email profile'),
+            'oidc_login_button_text' => self::pacol($super, $super, 0, 'text', 'oidc_login_button_text'      , ''                                 , 'Login with SSO'),
+            'oidc_auto_provision' => self::pacol($super,  $super, 0,      'bool', 'oidc_auto_provision'          , 'oidc_auto_provision_desc'         , 0),
+            'oidc_mfa_policy'  => self::pacol($super,     $super, 0,      'enum', 'oidc_mfa_policy'              , ''                                 , 'none',
+                /*options*/ array('none' => 'none', 'mfa_or_totp' => 'mfa_or_totp', 'idp_mfa' => 'idp_mfa')),
         );
     }
 
@@ -230,6 +241,26 @@ class DomainHandler extends PFAHandler
                 );
                 db_insert('alias', $arr);
                 # TODO: error checking
+            }
+        }
+
+        // Save per-domain OIDC configuration
+        if (!empty($this->values['oidc_enabled'])) {
+            $oidcHandler = new DomainOidcHandler($this->id);
+            $oidcHandler->save([
+                'issuer_url' => $this->values['oidc_issuer_url'] ?? '',
+                'client_id' => $this->values['oidc_client_id'] ?? '',
+                'client_secret' => $this->values['oidc_client_secret'] ?? '',
+                'scopes' => $this->values['oidc_scopes'] ?? 'openid email profile',
+                'login_button_text' => $this->values['oidc_login_button_text'] ?? 'Login with SSO',
+                'auto_provision' => $this->values['oidc_auto_provision'] ?? 0,
+                'mfa_policy' => $this->values['oidc_mfa_policy'] ?? 'none',
+            ]);
+        } else {
+            // OIDC disabled - clean up any existing config
+            $oidcHandler = new DomainOidcHandler($this->id);
+            if ($oidcHandler->exists()) {
+                $oidcHandler->delete();
             }
         }
 
