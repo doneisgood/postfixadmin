@@ -817,11 +817,14 @@ $CONF['additional_auth'] = [];
 // admin users can log in.
 $CONF['oidc_auto_provision'] = false;
 
+// OIDC identity method: 'email' (legacy, backward compat) or 'issuer_sub' (recommended).
+// 'email' — same email = same account across all IdPs (legacy behavior)
+// 'issuer_sub' — each IdP is a separate identity space (secure, recommended)
+$CONF['oidc_identity'] = 'issuer_sub';
+
 // OIDC MFA policy: 'none' (no MFA), 'mfa_or_totp' (IdP MFA or local TOTP),
 // or 'idp_mfa' (IdP MFA only, TOTP is not a fallback)
 $CONF['oidc_mfa'] = 'none';
-
-// Whitelist of amr methods accepted as MFA. Methods not in this list are ignored.
 // Blacklist overrides whitelist (if in both, it's excluded).
 $CONF['oidc_mfa_methods'] = [
     'mfa', 'otp', 'totp', 'hotp', 'hwk', 'fido',
