@@ -20,7 +20,7 @@ class DomainOidcHandler
      * Get OIDC config for this domain
      * @return array|false Config array or false if not configured
      */
-    public function get(): array|false
+    public function get(): ?array
     {
         $table = table_by_key('domain_oidc');
         return db_query_one("SELECT * FROM $table WHERE domain = ?", [$this->domain]);
@@ -91,7 +91,7 @@ class DomainOidcHandler
     /**
      * Get OIDC config by issuer URL (for callback routing)
      */
-    public static function getByIssuer(string $issuerUrl): array|false
+    public static function getByIssuer(string $issuerUrl): ?array
     {
         $table = table_by_key('domain_oidc');
         return db_query_one("SELECT * FROM $table WHERE issuer_url = ?", [$issuerUrl]);
