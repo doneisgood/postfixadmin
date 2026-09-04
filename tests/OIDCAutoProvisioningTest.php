@@ -247,10 +247,17 @@ class OIDCAutoProvisioningTest extends TestCase
         // Step 1: Pre-create the user
         $table_admin = table_by_key('admin');
         $prePassword = pacrypt('pre-existing-password');
-        db_execute(
-            "INSERT INTO $table_admin (username, password, active, created, modified) VALUES (?, ?, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (username) DO NOTHING",
-            [$this->testEmail, $prePassword]
-        );
+        if (db_pgsql() || db_sqlite()) {
+            db_execute(
+                "INSERT INTO $table_admin (username, password, active, created, modified) VALUES (?, ?, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (username) DO NOTHING",
+                [$this->testEmail, $prePassword]
+            );
+        } else {
+            db_execute(
+                "INSERT IGNORE INTO $table_admin (username, password, active, created, modified) VALUES (?, ?, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                [$this->testEmail, $prePassword]
+            );
+        }
 
         // Step 2: Call handleCallback
         $claims = $this->oidc->testableHandleCallback('test-code', 'valid-state');
@@ -277,10 +284,17 @@ class OIDCAutoProvisioningTest extends TestCase
         // Step 1: Pre-create a disabled user
         $table_admin = table_by_key('admin');
         $password = pacrypt('test-password');
-        db_execute(
-            "INSERT INTO $table_admin (username, password, active, created, modified) VALUES (?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (username) DO NOTHING",
-            [$this->testEmail, $password]
-        );
+        if (db_pgsql() || db_sqlite()) {
+            db_execute(
+                "INSERT INTO $table_admin (username, password, active, created, modified) VALUES (?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (username) DO NOTHING",
+                [$this->testEmail, $password]
+            );
+        } else {
+            db_execute(
+                "INSERT IGNORE INTO $table_admin (username, password, active, created, modified) VALUES (?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                [$this->testEmail, $password]
+            );
+        }
 
         // Step 2: Call handleCallback
         $claims = $this->oidc->testableHandleCallback('test-code', 'valid-state');
