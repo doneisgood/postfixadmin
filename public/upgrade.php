@@ -2332,3 +2332,33 @@ function upgrade_1856()
         ) {COLLATE};
     ");
 }
+
+/**
+ * Per-domain OIDC support
+ * - domain_oidc table for per-domain IdP configuration
+ * - oidc_issuer and oidc_sub columns in admin table for stable identity binding
+ */
+function upgrade_1857()
+{
+    $table_domain_oidc = table_by_key('domain_oidc');
+
+    // Create domain_oidc table
+    db_query_parsed("
+        CREATE TABLE {IF_NOT_EXISTS} $table_domain_oidc (
+            domain varchar(255) NOT NULL PRIMARY KEY,
+            issuer_url text NOT NULL,
+            client_id varchar(255) NOT NULL,
+            client_secret varchar(255) NOT NULL,
+            scopes varchar(255) NOT NULL DEFAULT 'openid email profile',
+            login_button_text varchar(255) DEFAULT 'Login with SSO',
+            auto_provision smallint NOT NULL DEFAULT 0,
+            mfa_policy varchar(50) DEFAULT 'none',
+            mfa_methods text DEFAULT NULL,
+            mfa_blacklist text DEFAULT NULL
+        ) {COLLATE};
+    ");
+
+    // Add oidc_issuer and oidc_sub columns to admin table
+    _db_add_field('admin', 'oidc_issuer', 'text DEFAULT NULL');
+    _db_add_field('admin', 'oidc_sub', 'varchar(255) DEFAULT NULL');
+}

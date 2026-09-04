@@ -19,14 +19,17 @@ class OIDC
     private string $scopes;
     private array $discovery = [];
 
-    public function __construct()
+    public function __construct(?array $config = null)
     {
-        $CONF = Config::getInstance()->getAll();
-        $this->clientId = $CONF['oidc']['client_id'] ?? '';
-        $this->clientSecret = $CONF['oidc']['client_secret'] ?? '';
-        $this->issuerUrl = rtrim($CONF['oidc']['issuer_url'] ?? '', '/');
-        $this->redirectUri = $CONF['oidc']['redirect_uri'] ?? '';
-        $this->scopes = $CONF['oidc']['scopes'] ?? 'openid email profile';
+        if ($config === null) {
+            $CONF = Config::getInstance()->getAll();
+            $config = $CONF['oidc'] ?? [];
+        }
+        $this->clientId = $config['client_id'] ?? '';
+        $this->clientSecret = $config['client_secret'] ?? '';
+        $this->issuerUrl = rtrim($config['issuer_url'] ?? '', '/');
+        $this->redirectUri = $config['redirect_uri'] ?? '';
+        $this->scopes = $config['scopes'] ?? 'openid email profile';
     }
 
     private function logSecurityEvent(string $message): void

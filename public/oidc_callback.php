@@ -2,7 +2,8 @@
 
 /**
  * OIDC callback handler
- * Receives authorization code from Keycloak, validates token, logs user in
+ * Receives authorization code from IdP, validates token, logs user in
+ * Supports both master (global) and per-domain OIDC providers
  */
 
 require_once('common.php');
@@ -23,7 +24,29 @@ if (empty($code) || empty($state)) {
     exit;
 }
 
-$oidc = new OIDC();
+// Try to find domain-specific OIDC config by looking at state/session
+$domainOidcConfig = null;
+if (isset($_SESSION['oidc_domain'])) {
+    $domainOidcHandler = new DomainOidcHandler($_SESSION['oidc_domain']);
+    if ($domainOidcHandler->exists()) {
+        $domainOidcConfig = $domainOidcHandler->get();
+    }
+}
+
+// Use domain-specific config or fall back to global
+if ($domainOidcConfig) {
+    $oidcConfig = [
+        'client_id' => $domainOidcConfig['client_id'],
+        'client_secret' => $domainOidcConfig['client_secret'],
+        'issuer_url' => $domainOidcConfig['issuer_url'],
+        'redirect_uri' => $CONF['oidc']['redirect_uri'] ?? '',
+        'scopes' => $domainOidcConfig['scopes'] ?? 'openid email profile',
+    ];
+    $oidc = new OIDC($oidcConfig);
+} else {
+    $oidc = new OIDC();
+}
+
 if (!$oidc->isConfigured()) {
     flash_error('OIDC not configured');
     header('Location: login.php');
@@ -54,19 +77,48 @@ if (($CONF['oidc_require_verified_email'] ?? false) && !($claims['email_verified
     exit;
 }
 
-// Look up admin user by email
-try {
-    $adminHandler = new AdminHandler();
-    $adminHandler->init($email);
-} catch (\Exception $e) {
-    flash_error('Failed to look up admin account.');
-    header('Location: login.php');
-    exit;
+// Determine if this is a master or domain IdP based on issuer
+$issuer = $claims['iss'] ?? '';
+$sub = $claims['sub'] ?? '';
+$isMasterIdp = empty($domainOidcConfig) && ($issuer === ($CONF['oidc']['issuer_url'] ?? ''));
+
+// Look up user by oidc_issuer + oidc_sub (stable identity)
+$username = '';
+$isSuperadmin = false;
+$table_admin = table_by_key('admin');
+
+// Try to find user by issuer+sub first
+if ($issuer && $sub) {
+    $adminRecord = db_query_one(
+        "SELECT * FROM $table_admin WHERE oidc_issuer = ? AND oidc_sub = ?",
+        [$issuer, $sub]
+    );
+    if ($adminRecord) {
+        $username = $adminRecord['username'];
+        $isSuperadmin = ($adminRecord['superadmin'] ?? 0) == 1;
+    }
 }
 
-if (!$adminHandler->view()) {
-    // Admin user not found - auto-provision if enabled
-    if (!($CONF['oidc_auto_provision'] ?? true)) {
+// Fall back to email lookup for existing users without issuer+sub
+if (empty($username)) {
+    try {
+        $adminHandler = new AdminHandler();
+        $adminHandler->init($email);
+        if ($adminHandler->view()) {
+            $adminProperties = $adminHandler->result();
+            $username = $adminProperties['username'];
+            $isSuperadmin = ($adminProperties['superadmin'] ?? 0) == 1;
+        }
+    } catch (\Exception $e) {
+        // User not found
+    }
+}
+
+// User not found - auto-provision if enabled
+if (empty($username)) {
+    $autoProvision = $domainOidcConfig ? ($domainOidcConfig['auto_provision'] ?? 0) : ($CONF['oidc_auto_provision'] ?? false);
+
+    if (!$autoProvision) {
         flash_error('You are not authorized to access this system. Contact an administrator.');
         header('Location: login.php');
         exit;
@@ -76,32 +128,36 @@ if (!$adminHandler->view()) {
     $randomPassword = generate_password();
     $hashedPassword = pacrypt($randomPassword);
 
-    $table_admin = table_by_key('admin');
-
     if (db_pgsql() || db_sqlite()) {
-        // PostgreSQL 9.5+ and SQLite 3.24+: atomic upsert
         db_execute(
-            "INSERT INTO $table_admin (username, password, active, created, modified) VALUES (?, ?, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (username) DO NOTHING",
-            [$email, $hashedPassword]
+            "INSERT INTO $table_admin (username, password, active, created, modified, oidc_issuer, oidc_sub) VALUES (?, ?, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?) ON CONFLICT (username) DO NOTHING",
+            [$email, $hashedPassword, $issuer, $sub]
         );
     } else {
-        // MySQL: INSERT IGNORE (ON DUPLICATE KEY syntax)
         db_execute(
-            "INSERT IGNORE INTO $table_admin (username, password, active, created, modified) VALUES (?, ?, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            [$email, $hashedPassword]
+            "INSERT IGNORE INTO $table_admin (username, password, active, created, modified, oidc_issuer, oidc_sub) VALUES (?, ?, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?)",
+            [$email, $hashedPassword, $issuer, $sub]
         );
     }
 
     $username = $email;
-    $isSuperadmin = false;
-} else {
-    $adminProperties = $adminHandler->result();
-    $username = $adminProperties['username'];
-    $isSuperadmin = ($adminProperties['superadmin'] ?? 0) == 1;
+
+    // Domain IdP: create domain-admin, not super-admin
+    if ($domainOidcConfig && !$isMasterIdp) {
+        $isSuperadmin = false;
+        // Add to domain_admins for this domain
+        $table_domain_admins = table_by_key('domain_admins');
+        db_execute(
+            "INSERT INTO $table_domain_admins (username, domain, created, active) VALUES (?, ?, CURRENT_TIMESTAMP, 1) ON CONFLICT DO NOTHING",
+            [$username, $domainOidcConfig['domain']]
+        );
+    } else {
+        // Master IdP: super-admin
+        $isSuperadmin = true;
+    }
 }
 
 // Check if user is active
-$table_admin = table_by_key('admin');
 $adminRecord = db_query_one("SELECT active FROM $table_admin WHERE username = ?", [$username]);
 if (!$adminRecord || !db_get_boolean($adminRecord['active'])) {
     flash_error('Your account is disabled. Contact an administrator.');
@@ -112,8 +168,16 @@ if (!$adminRecord || !db_get_boolean($adminRecord['active'])) {
 // Check if MFA was used at the IdP (via amr claim)
 $amr = $claims['amr'] ?? [];
 $mfa_used = false;
-$whitelist = $CONF['oidc_mfa_methods'] ?? [];
-$blacklist = $CONF['oidc_mfa_blacklist'] ?? [];
+
+// Use per-domain MFA methods if available, otherwise global
+if ($domainOidcConfig) {
+    $whitelist = (new DomainOidcHandler($domainOidcConfig['domain']))->getMfaMethods();
+    $blacklist = (new DomainOidcHandler($domainOidcConfig['domain']))->getMfaBlacklist();
+} else {
+    $whitelist = $CONF['oidc_mfa_methods'] ?? [];
+    $blacklist = $CONF['oidc_mfa_blacklist'] ?? [];
+}
+
 foreach ($amr as $method) {
     $method = strtolower($method);
     if (in_array($method, $whitelist) && !in_array($method, $blacklist)) {
@@ -126,7 +190,8 @@ if ($mfa_used) {
     // MFA completed at IdP — full session
     init_session($username, true, true);
 } else {
-    $oidc_mfa = $CONF['oidc_mfa'] ?? 'none';
+    // Use per-domain MFA policy if available, otherwise global
+    $oidc_mfa = $domainOidcConfig ? (new DomainOidcHandler($domainOidcConfig['domain']))->getMfaPolicy() : ($CONF['oidc_mfa'] ?? 'none');
 
     if ($oidc_mfa === 'idp_mfa') {
         // Must have IdP MFA — TOTP is not a fallback

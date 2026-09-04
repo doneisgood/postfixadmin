@@ -120,6 +120,12 @@ if (in_array('oidc', $CONF['additional_auth'] ?? [])) {
         $smarty->assign('oidc_login_url', 'oidc_login.php');
         $smarty->assign('oidc_login_text', $oidcLoginText);
     }
+
+    // Check for per-domain OIDC configurations
+    $domainOidcConfigs = DomainOidcHandler::getAll();
+    if (!empty($domainOidcConfigs)) {
+        $smarty->assign('domain_oidc_configs', $domainOidcConfigs);
+    }
 }
 
 $smarty->display('index.tpl');
