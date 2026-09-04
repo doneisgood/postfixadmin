@@ -145,8 +145,12 @@ class OIDC
         }
 
         try {
-            $claims = JWT::decode($tokens['id_token'], JWK::parseKeySet($jwks));
-            $claims = json_decode(json_encode($claims), true);
+            $decoded = JWT::decode($tokens['id_token'], JWK::parseKeySet($jwks));
+            $claims = json_decode(json_encode($decoded), true);
+            if (!is_array($claims)) {
+                error_log('OIDC: ID token claims are not an array');
+                return false;
+            }
         } catch (\Exception $e) {
             $this->logSecurityEvent('ID token validation failed: ' . $e->getMessage());
             return false;
@@ -224,7 +228,10 @@ class OIDC
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        return $httpCode === 200 ? $response : false;
+        if ($httpCode !== 200) {
+            return false;
+        }
+        return $response;
     }
 
     protected function httpPost(string $url, array $params): string|false
@@ -239,6 +246,9 @@ class OIDC
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        return $httpCode === 200 ? $response : false;
+        if ($httpCode !== 200) {
+            return false;
+        }
+        return $response;
     }
 }

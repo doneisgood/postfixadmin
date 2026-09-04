@@ -64,9 +64,6 @@ try {
     exit;
 }
 
-$username = '';
-$isSuperadmin = false;
-
 if (!$adminHandler->view()) {
     // Admin user not found - auto-provision if enabled
     if (!($CONF['oidc_auto_provision'] ?? true)) {
