@@ -12,7 +12,27 @@ PR #1144 adds global OIDC — one IdP for all admins. This works for single-tena
 2. **Domain-scoped auto-provisioning** — OIDC users should get domain-admin rights, not super-admin
 3. **Multi-tenant hosting** — one PostfixAdmin instance serving multiple organizations with their own IdPs
 
-## Goals
+## Authentication Methods
+
+PostfixAdmin supports multiple authentication methods that can be combined:
+
+| Method | Status | Configured Via | Notes |
+|--------|--------|----------------|-------|
+| **Local Password** | Built-in | Always available | Default admin method, always enabled |
+| **OIDC** | Implemented | `$CONF['additional_auth'] = ['oidc']` | Per-domain or global IdP (Keycloak, Google, etc.) |
+| **LDAP** | Planned | `$CONF['additional_auth'][] = 'ldap'` | Not yet implemented; aspirational |
+| **SAML** | Planned | `$CONF['additional_auth'][] = 'saml'` | Not yet implemented; aspirational |
+
+The `additional_auth` array is designed for extensibility. Any combination can be enabled:
+```php
+// Examples:
+$CONF['additional_auth'] = ['oidc'];                    // OIDC only
+$CONF['additional_auth'] = ['oidc', 'ldap'];             // OIDC + LDAP
+$CONF['additional_auth'] = ['ldap'];                    // LDAP only (local password always available)
+$CONF['additional_auth'] = [];                          // Local password only (default)
+```
+
+Local password auth is **always available** regardless of `additional_auth` — it cannot be disabled.
 
 | Goal | Description |
 |------|-------------|
