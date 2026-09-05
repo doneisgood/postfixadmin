@@ -80,6 +80,7 @@ if (($CONF['oidc_require_verified_email'] ?? false) && !($claims['email_verified
 // Look up user by configured identity method
 $username = '';
 $isSuperadmin = false;
+$table_admin = table_by_key('admin');
 
 if (($CONF['oidc_identity'] ?? 'issuer_sub') === 'email' && !$domainOidcConfig) {
     // Legacy: identify by email (backward compat) — global IdP only
