@@ -128,7 +128,7 @@ $CONF['totp'] = 'YES';
 
 - **SameSite=Strict session cookie** — PostfixAdmin uses `SameSite=Strict` for its session cookie. Cross-site callbacks from external providers (Microsoft Entra, Google, Okta, Auth0) may lose the session containing `oidc_state`. This is only a problem if the OIDC provider is on a different domain than PostfixAdmin. Same-site deployments (Keycloak on the same domain) are unaffected.
 - **Auto-provisioning uses direct db_insert** — New admin accounts are created via `db_insert()` rather than `AdminHandler::add()`. This is a known limitation; future work should use the handler.
-- **No per-domain/multitenant OIDC** — One global OIDC provider for all domains. Different issuers per domain are not supported.
+- **No per-domain/multitenant OIDC** — One global OIDC provider for all domains. Different issuers per domain are not supported. *(Note: Per-domain OIDC is now implemented in PR #1147 — this item is being addressed.)*
 - **Discovery document issuer** — The `.well-known/openid-configuration` document's `issuer` field is validated against the configured issuer during discovery.
 - **UserInfo endpoint** — When used, the `sub` claim from UserInfo is verified against the ID token's `sub` before merging claims.
 - **Identity binding by email** — OIDC accounts are linked using the `email` claim. This is problematic because: (1) email can change in the IdP, breaking access; (2) email can be reused (old employee → new employee), inheriting access; (3) email is not globally unique across IdPs. The reviewer recommends binding by `issuer + sub` instead, which is stable and unique. This requires schema changes (new columns in the `admin` table) and a migration strategy for existing users.
@@ -162,7 +162,32 @@ $CONF['totp'] = 'YES';
 
 This was developed for a homelab/family mail server where family members need to manage their own mailboxes without sharing the main admin account. OIDC via Keycloak SSO provides secure, individual access.
 
-## Test Environment
+## Per-Domain OIDC (PR #1147)
+
+PR #1147 adds per-domain OIDC support, allowing each domain to have its own IdP. This is managed through the Domain Edit UI.
+
+### Domain Edit Page — OIDC Section
+
+| Field | Type | Description |
+|-------|------|-------------|
+| OIDC Enabled | checkbox | Enable OIDC for this domain |
+| Issuer URL | text | IdP realm URL (e.g. `https://keycloak.example.com/realms/your-realm`) |
+| Client ID | text | OIDC client ID |
+| Client Secret | password | OIDC client secret (masked — leave blank to keep existing) |
+| Scopes | text | OAuth scopes (default: `openid email profile`) |
+| Login Button Text | text | Custom button label (default: `Login with SSO`) |
+| Auto-Provision | checkbox | Create domain-admin on first OIDC login |
+| MFA Policy | select | `none` / `mfa_or_totp` / `idp_mfa` |
+
+### Client Secret Handling
+
+- The client secret field is rendered as `<input type="password">` (masked)
+- When **editing** a domain, the field appears empty
+- **Leave blank** to preserve the existing secret
+- Enter a new value to replace it
+- The secret is stored in the `domain_oidc` table
+
+### Test Environment
 
 - **OIDC Provider:** Keycloak
 - **Database:** PostgreSQL with pgBouncer

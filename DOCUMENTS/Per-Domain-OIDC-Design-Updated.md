@@ -224,6 +224,7 @@ The following has been implemented and tested on a live instance:
 - New "OIDC Authentication" section (visible to super-admins)
 - Fields: issuer URL, client ID, client secret, scopes, button text, auto-provision, MFA policy
 - Enable/disable toggle
+- Client secret is masked (password field) — leave blank to keep existing secret when editing
 
 ### Login Page
 - If per-domain OIDC configured: show per-domain buttons (one per domain with OIDC configured)
