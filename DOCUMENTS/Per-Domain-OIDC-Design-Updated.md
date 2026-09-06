@@ -1,7 +1,7 @@
 # Per-Domain OIDC — Design Proposal
 
 **Status:** Draft for discussion
-**Author:** @doneisgood (FrogPond.Cloud)
+**Author:** @doneisgood
 **Related:** PR #1144 (global OIDC support), @TrapoSAMA suggested this feature
 
 ## Problem
@@ -195,7 +195,7 @@ CREATE TABLE admin_oidc (
 The following has been implemented and tested on a live instance:
 
 ### Per-Domain OIDC Login
-- Configured two Keycloak realms: `FrogPond.Cloud` (global) and `OrgB` (per-domain)
+- Configured two Keycloak realms: `OrgA` (global) and `OrgB` (per-domain)
 - Created `domain_oidc` entry for `orgb.com` pointing to OrgB realm
 - Logged in via `oidc_login.php?domain=orgb.com`
 - Result: User was authenticated by OrgB realm, added to `domain_admins` for `orgb.com`

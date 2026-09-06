@@ -1,7 +1,7 @@
 # Per-Domain OIDC — Design Proposal
 
 **Status:** Draft for discussion
-**Author:** @doneisgood (FrogPond.Cloud)
+**Author:** @doneisgood
 **Related:** PR #1144 (global OIDC support)
 
 ## Problem

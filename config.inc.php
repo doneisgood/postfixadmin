@@ -851,10 +851,9 @@ $CONF['oidc_cookie_samesite'] = 'Strict';
 $CONF['oidc'] = array(
     'client_id'     => '',
     'client_secret' => '',
-    'issuer_url'    => '',  // e.g. https://keycloak.frogpond.cloud/realms/FrogPond.Cloud
-    'redirect_uri'  => '',  // e.g. https://mailadmin.frogpond.cloud/oidc_callback.php
-    'scopes'        => 'openid email profile',
-    'login_button_text' => 'Login with SSO',  // e.g. FrogPond.Cloud Keycloak
+    'issuer_url'    => '',  // e.g. https://keycloak.example.com/realms/master
+    'redirect_uri'  => '',  // e.g. https://mailadmin.example.com/oidc_callback.php
+    'login_button_text' => 'Login with SSO',  // e.g. Login with Keycloak
 );
 
 // The smtp_active_flag when set to YES enables editing of the smtp_active 

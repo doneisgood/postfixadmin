@@ -14,7 +14,7 @@ Closes: (no existing issue — new feature)
 - **Issuer validation** — ID token `iss` claim must match configured issuer URL
 - **Audience validation** — ID token `aud` claim must match configured client ID
 - **MFA enforcement** — optional MFA via IdP `amr` claim or local TOTP fallback
-- **Configurable button text** — customize the SSO button label (e.g., "FrogPond.Cloud Keycloak")
+- **Configurable button text** — customize the SSO button label (e.g., "Login with Keycloak")
 - **Graceful fallback** — local password auth remains available as default
 - **Active account check** — disabled admin accounts cannot log in via OIDC
 
@@ -160,11 +160,11 @@ $CONF['totp'] = 'YES';
 
 ## Use Case
 
-This was developed for a homelab/family mail server (FrogPond.Cloud) where family members need to manage their own mailboxes without sharing the main admin account. OIDC via Keycloak SSO provides secure, individual access.
+This was developed for a homelab/family mail server where family members need to manage their own mailboxes without sharing the main admin account. OIDC via Keycloak SSO provides secure, individual access.
 
 ## Test Environment
 
-- **OIDC Provider:** Keycloak (LXC 103, FrogPond.Cloud realm)
+- **OIDC Provider:** Keycloak
 - **Database:** PostgreSQL with pgBouncer
 - **SMTP:** Postfix with Dovecot SASL
 - **IMAP:** Dovecot
