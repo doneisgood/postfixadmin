@@ -24,7 +24,10 @@ class DomainOidcHandler
     {
         $table = table_by_key('domain_oidc');
         $config = db_query_one("SELECT * FROM $table WHERE domain = ?", [$this->domain]);
-        if ($config && isset($config['client_secret'])) {
+        if ($config === false || $config === null) {
+            return null;
+        }
+        if (isset($config['client_secret'])) {
             $config['client_secret'] = base64_decode($config['client_secret']);
         }
         return $config;
