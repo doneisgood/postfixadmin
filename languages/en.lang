@@ -57,6 +57,7 @@ $PALANG['oidc_issuer_url'] = 'OIDC Issuer URL';
 $PALANG['oidc_issuer_url_desc'] = 'e.g. https://keycloak.example.com/realms/your-realm';
 $PALANG['oidc_client_id'] = 'OIDC Client ID';
 $PALANG['oidc_client_secret'] = 'OIDC Client Secret';
+$PALANG['oidc_client_secret_desc'] = 'The client secret for your OIDC application';
 $PALANG['oidc_scopes'] = 'OIDC Scopes';
 $PALANG['oidc_login_button_text'] = 'Login Button Text';
 $PALANG['oidc_auto_provision'] = 'Auto-Provision';
