@@ -2386,4 +2386,3 @@ function upgrade_1858()
         db_execute("ALTER TABLE $table ADD CONSTRAINT domain_admins_username_domain_key UNIQUE (username, domain)");
     }
 }
-
