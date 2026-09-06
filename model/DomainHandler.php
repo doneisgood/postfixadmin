@@ -231,25 +231,28 @@ class DomainHandler extends PFAHandler
         }
         // Load per-domain OIDC configuration
         $oidcHandler = new DomainOidcHandler($this->id);
+        $oidcEnabled = 0;
+        $oidcConfig = [];
         if ($oidcHandler->exists()) {
+            $oidcEnabled = 1;
             $oidcConfig = $oidcHandler->get();
-            $fieldMap = [
-                'oidc_issuer_url' => 'issuer_url',
-                'oidc_client_id' => 'client_id',
-                'oidc_client_secret' => 'client_secret',
-                'oidc_scopes' => 'scopes',
-                'oidc_login_button_text' => 'login_button_text',
-                'oidc_auto_provision' => 'auto_provision',
-                'oidc_mfa_policy' => 'mfa_policy',
-            ];
+        }
+        $fieldMap = [
+            'oidc_issuer_url' => 'issuer_url',
+            'oidc_client_id' => 'client_id',
+            'oidc_client_secret' => 'client_secret',
+            'oidc_scopes' => 'scopes',
+            'oidc_login_button_text' => 'login_button_text',
+            'oidc_auto_provision' => 'auto_provision',
+            'oidc_mfa_policy' => 'mfa_policy',
+        ];
+        foreach ($db_result as $key => $row) {
+            $db_result[$key]['oidc_enabled'] = $oidcEnabled;
             foreach ($fieldMap as $structKey => $dbKey) {
                 if (isset($oidcConfig[$dbKey])) {
-                    $db_result[$structKey] = $oidcConfig[$dbKey];
+                    $db_result[$key][$structKey] = $oidcConfig[$dbKey];
                 }
             }
-            $db_result['oidc_enabled'] = 1;
-        } else {
-            $db_result['oidc_enabled'] = 0;
         }
         return $db_result;
     }
@@ -277,10 +280,16 @@ class DomainHandler extends PFAHandler
         // Save per-domain OIDC configuration
         if (!empty($this->values['oidc_enabled'])) {
             $oidcHandler = new DomainOidcHandler($this->id);
+            $existing = $oidcHandler->get();
+            $secret = $this->values['oidc_client_secret'] ?? '';
+            // Preserve existing secret if field left empty (password fields don't display stored value)
+            if ($secret === '' && $existing) {
+                $secret = $existing['client_secret'] ?? '';
+            }
             $oidcHandler->save([
                 'issuer_url' => $this->values['oidc_issuer_url'] ?? '',
                 'client_id' => $this->values['oidc_client_id'] ?? '',
-                'client_secret' => $this->values['oidc_client_secret'] ?? '',
+                'client_secret' => $secret,
                 'scopes' => $this->values['oidc_scopes'] ?? 'openid email profile',
                 'login_button_text' => $this->values['oidc_login_button_text'] ?? 'Login with SSO',
                 'auto_provision' => $this->values['oidc_auto_provision'] ?? 0,
