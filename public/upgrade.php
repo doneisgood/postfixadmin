@@ -2368,21 +2368,40 @@ function upgrade_1857()
  */
 function upgrade_1858()
 {
-    // Only run if not already done
     $table = table_by_key('domain_admins');
 
-    // Check if unique constraint exists (PostgreSQL)
-    $constraint = db_query_one(
-        "SELECT conname FROM pg_constraint WHERE conrelid = ?::regclass AND conname = ?",
-        [$table, 'domain_admins_username_domain_key']
+    // Clean up existing duplicates first (database-agnostic)
+    db_execute(
+        "DELETE FROM $table WHERE id NOT IN (SELECT MIN(id) FROM $table GROUP BY username, domain)"
     );
 
-    if (!$constraint) {
-        // Clean up existing duplicates first
-        db_execute(
-            "DELETE FROM $table WHERE id NOT IN (SELECT MIN(id) FROM $table GROUP BY username, domain)"
+    // Add unique constraint (database-specific)
+    if (db_pgsql()) {
+        // Check if constraint already exists
+        $constraint = db_query_one(
+            "SELECT conname FROM pg_constraint WHERE conrelid = ?::regclass AND conname = ?",
+            [$table, 'domain_admins_username_domain_key']
         );
-        // Add unique constraint
-        db_execute("ALTER TABLE $table ADD CONSTRAINT domain_admins_username_domain_key UNIQUE (username, domain)");
+        if (!$constraint) {
+            db_execute("ALTER TABLE $table ADD CONSTRAINT domain_admins_username_domain_key UNIQUE (username, domain)");
+        }
+    } elseif (db_sqlite()) {
+        // SQLite: create unique index (can't ALTER TABLE to add constraint)
+        $index = db_query_one(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
+            ['domain_admins_username_domain_key']
+        );
+        if (!$index) {
+            db_execute("CREATE UNIQUE INDEX domain_admins_username_domain_key ON $table (username, domain)");
+        }
+    } else {
+        // MySQL
+        $index = db_query_one(
+            "SHOW INDEX FROM $table WHERE Key_name = ?",
+            ['domain_admins_username_domain_key']
+        );
+        if (!$index) {
+            db_execute("ALTER TABLE $table ADD UNIQUE KEY domain_admins_username_domain_key (username, domain)");
+        }
     }
 }
