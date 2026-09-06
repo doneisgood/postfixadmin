@@ -146,7 +146,7 @@ if (empty($username)) {
         // Add to domain_admins for this domain
         $table_domain_admins = table_by_key('domain_admins');
         db_execute(
-            "INSERT INTO $table_domain_admins (username, domain, created, active) VALUES (?, ?, CURRENT_TIMESTAMP, 1) ON CONFLICT DO NOTHING",
+            "INSERT INTO $table_domain_admins (username, domain, created, active) VALUES (?, ?, CURRENT_TIMESTAMP, true) ON CONFLICT DO NOTHING",
             [$username, $domainOidcConfig['domain']]
         );
     }
