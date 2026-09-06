@@ -2362,3 +2362,28 @@ function upgrade_1857()
     _db_add_field('admin', 'oidc_issuer', 'text DEFAULT NULL');
     _db_add_field('admin', 'oidc_sub', 'varchar(255) DEFAULT NULL');
 }
+
+/**
+ * Add UNIQUE constraint to domain_admins to prevent duplicate entries.
+ */
+function upgrade_1858()
+{
+    // Only run if not already done
+    $table = table_by_key('domain_admins');
+
+    // Check if unique constraint exists (PostgreSQL)
+    $constraint = db_query_one(
+        "SELECT conname FROM pg_constraint WHERE conrelid = ?::regclass AND conname = ?",
+        [$table, 'domain_admins_username_domain_key']
+    );
+
+    if (!$constraint) {
+        // Clean up existing duplicates first
+        db_execute(
+            "DELETE FROM $table WHERE id NOT IN (SELECT MIN(id) FROM $table GROUP BY username, domain)"
+        );
+        // Add unique constraint
+        db_execute("ALTER TABLE $table ADD CONSTRAINT domain_admins_username_domain_key UNIQUE (username, domain)");
+    }
+}
+
