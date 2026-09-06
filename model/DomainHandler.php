@@ -246,7 +246,7 @@ class DomainHandler extends PFAHandler
             'oidc_auto_provision' => 'auto_provision',
             'oidc_mfa_policy' => 'mfa_policy',
         ];
-        foreach ($db_result as $key => $row) {
+        foreach ($db_result as $key => $_) {
             $db_result[$key]['oidc_enabled'] = $oidcEnabled;
             foreach ($fieldMap as $structKey => $dbKey) {
                 if (isset($oidcConfig[$dbKey])) {

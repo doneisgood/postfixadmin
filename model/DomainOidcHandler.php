@@ -24,7 +24,7 @@ class DomainOidcHandler
     {
         $table = table_by_key('domain_oidc');
         $config = db_query_one("SELECT * FROM $table WHERE domain = ?", [$this->domain]);
-        if ($config === false || $config === null) {
+        if (!$config) {
             return null;
         }
         if (isset($config['client_secret'])) {
