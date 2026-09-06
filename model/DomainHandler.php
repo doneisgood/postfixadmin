@@ -226,6 +226,9 @@ class DomainHandler extends PFAHandler
      */
     protected function read_from_db_postprocess($db_result)
     {
+        if (empty($this->id)) {
+            return $db_result;
+        }
         // Load per-domain OIDC configuration
         $oidcHandler = new DomainOidcHandler($this->id);
         if ($oidcHandler->exists()) {

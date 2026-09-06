@@ -50,7 +50,7 @@ $PALANG['password_expiration_never'] = 'Does not expire';
 $PALANG['pLogin_language'] = 'Language';
 $PALANG['pLogin_button'] = 'Login';
 $PALANG['pLogin_failed'] = 'Your email address or password is not correct.';
-$pLogin_login_users = 'Users click here to login to the user section.';
+$PALANG['pLogin_login_users'] = 'Users click here to login to the user section.';
 
 $PALANG['oidc_enable'] = 'Enable OIDC';
 $PALANG['oidc_issuer_url'] = 'OIDC Issuer URL';
