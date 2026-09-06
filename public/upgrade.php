@@ -2336,9 +2336,9 @@ function upgrade_1856()
 /**
  * Per-domain OIDC support
  * - domain_oidc table for per-domain IdP configuration
- * - oidc_issuer and oidc_sub columns in admin table for stable identity binding
+ * Create domain_oidc table and add oidc_issuer/oidc_sub to admin
  */
-function upgrade_1857()
+function upgrade_1859()
 {
     $table_domain_oidc = table_by_key('domain_oidc');
 
@@ -2366,7 +2366,7 @@ function upgrade_1857()
 /**
  * Add UNIQUE constraint to domain_admins to prevent duplicate entries.
  */
-function upgrade_1858()
+function upgrade_1860()
 {
     $table = table_by_key('domain_admins');
 
