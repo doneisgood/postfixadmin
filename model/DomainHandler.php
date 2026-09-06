@@ -224,6 +224,33 @@ class DomainHandler extends PFAHandler
      * called by $this->store() after storing $this->values in the database
      * can be used to update additional tables, call scripts etc.
      */
+    protected function read_from_db_postprocess($db_result)
+    {
+        // Load per-domain OIDC configuration
+        $oidcHandler = new DomainOidcHandler($this->id);
+        if ($oidcHandler->exists()) {
+            $oidcConfig = $oidcHandler->get();
+            $fieldMap = [
+                'oidc_issuer_url' => 'issuer_url',
+                'oidc_client_id' => 'client_id',
+                'oidc_client_secret' => 'client_secret',
+                'oidc_scopes' => 'scopes',
+                'oidc_login_button_text' => 'login_button_text',
+                'oidc_auto_provision' => 'auto_provision',
+                'oidc_mfa_policy' => 'mfa_policy',
+            ];
+            foreach ($fieldMap as $structKey => $dbKey) {
+                if (isset($oidcConfig[$dbKey])) {
+                    $db_result[$structKey] = $oidcConfig[$dbKey];
+                }
+            }
+            $db_result['oidc_enabled'] = 1;
+        } else {
+            $db_result['oidc_enabled'] = 0;
+        }
+        return $db_result;
+    }
+
     protected function postSave(): bool
     {
         if ($this->new && $this->values['default_aliases']) {
