@@ -114,6 +114,36 @@ if (($CONF['oidc_identity'] ?? 'issuer_sub') === 'email' && !$domainOidcConfig) 
 
 // User not found - auto-provision if enabled
 if (empty($username)) {
+    // Check if we should upgrade an existing account (NULL issuer → new issuer+sub)
+    if (($CONF['oidc_upgrade_existing'] ?? false) && ($CONF['oidc_identity'] ?? 'issuer_sub') !== 'email') {
+        $existing = db_query_one(
+            "SELECT * FROM $table_admin WHERE username = ?",
+            [$email]
+        );
+        if ($existing && empty($existing['oidc_issuer']) && empty($existing['oidc_sub'])) {
+            // Upgrade: fill in issuer+sub for this previously-local account
+            db_execute(
+                "UPDATE $table_admin SET oidc_issuer = ?, oidc_sub = ? WHERE username = ?",
+                [$issuer, $sub, $email]
+            );
+            $username = $existing['username'];
+            $isSuperadmin = ($existing['superadmin'] ?? 0) == 1;
+        }
+    }
+
+    if (empty($username)) {
+        // Don't auto-provision in issuer_sub mode if account already exists with different issuer
+        $existing = db_query_one(
+            "SELECT * FROM $table_admin WHERE username = ?",
+            [$email]
+        );
+        if ($existing && !empty($existing['oidc_issuer'])) {
+            flash_error('This email is already associated with a different identity provider. Contact an administrator.');
+            header('Location: login.php');
+            exit;
+        }
+    }
+
     $autoProvision = $domainOidcConfig ? ($domainOidcConfig['auto_provision'] ?? 0) : ($CONF['oidc_auto_provision'] ?? false);
 
     if (!$autoProvision) {

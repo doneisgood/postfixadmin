@@ -822,6 +822,12 @@ $CONF['oidc_auto_provision'] = false;
 // 'issuer_sub' — each IdP is a separate identity space (secure, recommended)
 $CONF['oidc_identity'] = 'issuer_sub';
 
+// OIDC upgrade existing: when enabled, an existing admin account with NULL oidc_issuer
+// will be upgraded (issuer+sub written) on first OIDC login. When disabled, existing
+// accounts with NULL issuer+sub will never be upgraded — login falls through to email fallback.
+// Default: false (secure by default — no automatic upgrades)
+$CONF['oidc_upgrade_existing'] = false;
+
 // OIDC MFA policy: 'none' (no MFA), 'mfa_or_totp' (IdP MFA or local TOTP),
 // or 'idp_mfa' (IdP MFA only, TOTP is not a fallback)
 $CONF['oidc_mfa'] = 'none';
