@@ -313,7 +313,7 @@ class DomainHandler extends PFAHandler
     public function getMfaPolicy(): string
     {
         $policy = $this->result['oidc_mfa_policy'] ?? null;
-        if (!empty($policy)) {
+        if ($policy && $policy !== 'none') {
             return $policy;
         }
         global $CONF;
