@@ -163,16 +163,18 @@ class DomainHandler extends PFAHandler
                 /*dont_write_to_db*/ 1,
                 /*select*/ $this->is_superadmin . ' as _can_delete'),
 
-            # Per-domain OIDC configuration (stored in domain_oidc table, not domain)
-            'oidc_enabled'     => self::pacol($super,     $super, 0,      'bool', 'oidc_enable'                  , ''                                 , 0, array(), 1, 1),
-            'oidc_issuer_url'  => self::pacol($super,     $super, 0,      'text', 'oidc_issuer_url'              , 'oidc_issuer_url_desc'             , '', array(), 1, 1),
-            'oidc_client_id'   => self::pacol($super,     $super, 0,      'text', 'oidc_client_id'               , ''                                 , '', array(), 1, 1),
-            'oidc_client_secret' => self::pacol($super, $super, 0, 'b64p', 'oidc_client_secret', 'oidc_client_secret_desc', '', array(), 1, 1),
-            'oidc_scopes'      => self::pacol($super,     $super, 0,      'text', 'oidc_scopes'                  , ''                                 , 'openid email profile', array(), 1, 1),
-            'oidc_login_button_text' => self::pacol($super, $super, 0, 'text', 'oidc_login_button_text'      , ''                                 , 'Login with SSO', array(), 1, 1),
-            'oidc_auto_provision' => self::pacol($super,  $super, 0,      'bool', 'oidc_auto_provision'          , 'oidc_auto_provision_desc'         , 0, array(), 1, 1),
+            # Per-domain OIDC configuration (stored directly in domain table)
+            'oidc_enabled'     => self::pacol($super,     $super, 0,      'bool', 'oidc_enable'                  , ''                                 , 0, array(), 1, 1,
+            'oidc_issuer_url'  => self::pacol($super,     $super, 0,      'text', 'oidc_issuer_url'              , 'oidc_issuer_url_desc'             , '', array(), 0, 0),
+            'oidc_client_id'   => self::pacol($super,     $super, 0,      'text', 'oidc_client_id'               , ''                                 , '', array(), 0, 0),
+            'oidc_client_secret' => self::pacol($super, $super, 0, 'b64p', 'oidc_client_secret', 'oidc_client_secret_desc', '', array(), 0, 0),
+            'oidc_scopes'      => self::pacol($super,     $super, 0,      'text', 'oidc_scopes'                  , ''                                 , 'openid email profile', array(), 0, 0),
+            'oidc_login_button_text' => self::pacol($super, $super, 0, 'text', 'oidc_login_button_text'      , ''                                 , 'Login with SSO', array(), 0, 0),
+            'oidc_auto_provision' => self::pacol($super,  $super, 0,      'bool', 'oidc_auto_provision'          , 'oidc_auto_provision_desc'         , 0, array(), 0, 0),
             'oidc_mfa_policy'  => self::pacol($super,     $super, 0,      'enum', 'oidc_mfa_policy'              , ''                                 , 'none',
-                /*options*/ array('none' => 'none', 'mfa_or_totp' => 'mfa_or_totp', 'idp_mfa' => 'idp_mfa'), 1, 1),
+                /*options*/ array('none' => 'none', 'mfa_or_totp' => 'mfa_or_totp', 'idp_mfa' => 'idp_mfa')),
+            'oidc_mfa_methods' => self::pacol($super,     $super, 0,      'text', 'oidc_mfa_methods'             , ''                                 , '', array(), 0, 0),
+            'oidc_mfa_blacklist' => self::pacol($super,   $super, 0,      'text', 'oidc_mfa_blacklist'           , ''                                 , '', array(), 0, 0),
         );
     }
 
@@ -229,29 +231,16 @@ class DomainHandler extends PFAHandler
         if (empty($this->id)) {
             return $db_result;
         }
-        // Load per-domain OIDC configuration
-        $oidcHandler = new DomainOidcHandler($this->id);
-        $oidcEnabled = 0;
-        $oidcConfig = [];
-        if ($oidcHandler->exists()) {
-            $oidcEnabled = 1;
-            $oidcConfig = $oidcHandler->get();
-        }
-        $fieldMap = [
-            'oidc_issuer_url' => 'issuer_url',
-            'oidc_client_id' => 'client_id',
-            'oidc_client_secret' => 'client_secret',
-            'oidc_scopes' => 'scopes',
-            'oidc_login_button_text' => 'login_button_text',
-            'oidc_auto_provision' => 'auto_provision',
-            'oidc_mfa_policy' => 'mfa_policy',
-        ];
+        // OIDC fields are now stored directly in the domain table by PFAHandler;
+        // only derive the virtual oidc_enabled flag (not a DB column).
         foreach ($db_result as $key => $_) {
-            $db_result[$key]['oidc_enabled'] = $oidcEnabled;
-            foreach ($fieldMap as $structKey => $dbKey) {
-                if (isset($oidcConfig[$dbKey])) {
-                    $db_result[$key][$structKey] = $oidcConfig[$dbKey];
-                }
+            // oidc_enabled is derived from oidc_issuer_url presence
+            $issuerUrl = $db_result[$key]['oidc_issuer_url'] ?? '';
+            $db_result[$key]['oidc_enabled'] = ($issuerUrl !== '' && $issuerUrl !== null) ? 1 : 0;
+
+            // Decode client_secret from base64 for form display (b64p fields aren't auto-decoded)
+            if (isset($db_result[$key]['oidc_client_secret'])) {
+                $db_result[$key]['oidc_client_secret'] = base64_decode($db_result[$key]['oidc_client_secret']);
             }
         }
         return $db_result;
@@ -277,31 +266,8 @@ class DomainHandler extends PFAHandler
             }
         }
 
-        // Save per-domain OIDC configuration
-        if (!empty($this->values['oidc_enabled'])) {
-            $oidcHandler = new DomainOidcHandler($this->id);
-            $existing = $oidcHandler->get();
-            $secret = $this->values['oidc_client_secret'] ?? '';
-            // Preserve existing secret if field left empty (password fields don't display stored value)
-            if ($secret === '' && $existing) {
-                $secret = $existing['client_secret'] ?? '';
-            }
-            $oidcHandler->save([
-                'issuer_url' => $this->values['oidc_issuer_url'] ?? '',
-                'client_id' => $this->values['oidc_client_id'] ?? '',
-                'client_secret' => $secret,
-                'scopes' => $this->values['oidc_scopes'] ?? 'openid email profile',
-                'login_button_text' => $this->values['oidc_login_button_text'] ?? 'Login with SSO',
-                'auto_provision' => $this->values['oidc_auto_provision'] ?? 0,
-                'mfa_policy' => $this->values['oidc_mfa_policy'] ?? 'none',
-            ]);
-        } else {
-            // OIDC disabled - clean up any existing config
-            $oidcHandler = new DomainOidcHandler($this->id);
-            if ($oidcHandler->exists()) {
-                $oidcHandler->delete();
-            }
-        }
+        // OIDC config is now saved directly by PFAHandler's store() via the
+        // pacol 'not_in_db=0' fields — nothing extra to do here.
 
         if ($this->new) {
             if (!$this->domain_postcreation()) {
@@ -313,6 +279,45 @@ class DomainHandler extends PFAHandler
             }
         }
         return true; # TODO: don't hardcode
+    }
+
+    /**
+     * Get effective MFA methods for this domain (falls back to global config)
+     */
+    public function getMfaMethods(): array
+    {
+        $methods = $this->values['oidc_mfa_methods'] ?? null;
+        if (!empty($methods)) {
+            return array_map('trim', explode(',', $methods));
+        }
+        global $CONF;
+        return $CONF['oidc_mfa_methods'] ?? [];
+    }
+
+    /**
+     * Get effective MFA blacklist for this domain (falls back to global config)
+     */
+    public function getMfaBlacklist(): array
+    {
+        $blacklist = $this->values['oidc_mfa_blacklist'] ?? null;
+        if (!empty($blacklist)) {
+            return array_map('trim', explode(',', $blacklist));
+        }
+        global $CONF;
+        return $CONF['oidc_mfa_blacklist'] ?? [];
+    }
+
+    /**
+     * Get effective MFA policy for this domain (falls back to global config)
+     */
+    public function getMfaPolicy(): string
+    {
+        $policy = $this->values['oidc_mfa_policy'] ?? null;
+        if (!empty($policy)) {
+            return $policy;
+        }
+        global $CONF;
+        return $CONF['oidc_mfa'] ?? 'none';
     }
 
     /**

@@ -185,7 +185,7 @@ PR #1147 adds per-domain OIDC support, allowing each domain to have its own IdP.
 - When **editing** a domain, the field appears empty
 - **Leave blank** to preserve the existing secret
 - Enter a new value to replace it
-- The secret is stored in the `domain_oidc` table
+- The secret is stored in the `domain` table (base64-encoded via b64p field type)
 
 ### Test Environment
 

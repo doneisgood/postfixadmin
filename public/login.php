@@ -121,8 +121,9 @@ if (in_array('oidc', $CONF['additional_auth'] ?? [])) {
         $smarty->assign('oidc_login_text', $oidcLoginText);
     }
 
-    // Check for per-domain OIDC configurations
-    $domainOidcConfigs = DomainOidcHandler::getAll();
+    // Check for per-domain OIDC configurations (issuer_url IS NOT NULL means configured)
+    $table_domain = table_by_key('domain');
+    $domainOidcConfigs = db_query_all("SELECT domain, oidc_issuer_url, oidc_client_id, oidc_login_button_text FROM $table_domain WHERE oidc_issuer_url IS NOT NULL AND oidc_issuer_url != ''");
     if (!empty($domainOidcConfigs)) {
         $smarty->assign('domain_oidc_configs', $domainOidcConfigs);
     }

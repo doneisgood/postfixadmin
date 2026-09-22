@@ -1,8 +1,8 @@
 # Per-Domain OIDC — Design Proposal
 
-**Status:** Draft for discussion
+**Status:** Draft (revised after maintainer review — folded into DomainHandler)
 **Author:** @doneisgood
-**Related:** PR #1144 (global OIDC support), @TrapoSAMA suggested this feature
+**Related:** PR #1144 (global OIDC support), PR #1147 (this PR)
 
 ## Problem
 
@@ -74,53 +74,27 @@ $CONF['oidc_identity'] = 'issuer_sub';
 - `email` — legacy behavior, same email = same account (backward compat)
 - `issuer_sub` — secure, recommended, each IdP is its own identity space
 
-### Per-Domain OIDC — Database
+### Per-Domain OIDC — Database Columns
+
+Per maintainer feedback (cboltz): when a relation is truly 1:1, add fields to the existing table rather than creating a separate one. OIDC config fields are added directly to the `domain` table:
 
 ```sql
-CREATE TABLE domain_oidc (
-    domain VARCHAR(255) NOT NULL PRIMARY KEY REFERENCES domain(domain) ON DELETE CASCADE,
-    issuer_url TEXT NOT NULL,
-    client_id VARCHAR(255) NOT NULL,
-    client_secret VARCHAR(255) NOT NULL,
-    scopes VARCHAR(255) DEFAULT 'openid email profile',
-    login_button_text VARCHAR(255) DEFAULT 'Login with SSO',
-    auto_provision SMALLINT DEFAULT 0,
-    mfa_policy VARCHAR(50) DEFAULT 'none',
-    mfa_methods TEXT DEFAULT NULL,
-    mfa_blacklist TEXT DEFAULT NULL
-);
+ALTER TABLE domain ADD COLUMN oidc_issuer_url TEXT DEFAULT NULL;
+ALTER TABLE domain ADD COLUMN oidc_client_id VARCHAR(255) DEFAULT NULL;
+ALTER TABLE domain ADD COLUMN oidc_client_secret VARCHAR(255) DEFAULT NULL;
+ALTER TABLE domain ADD COLUMN oidc_scopes VARCHAR(255) DEFAULT 'openid email profile';
+ALTER TABLE domain ADD COLUMN oidc_login_button_text VARCHAR(255) DEFAULT 'Login with SSO';
+ALTER TABLE domain ADD COLUMN oidc_auto_provision SMALLINT DEFAULT 0;
+ALTER TABLE domain ADD COLUMN oidc_mfa_policy VARCHAR(50) DEFAULT 'none';
+ALTER TABLE domain ADD COLUMN oidc_mfa_methods TEXT DEFAULT NULL;
+ALTER TABLE domain ADD COLUMN oidc_mfa_blacklist TEXT DEFAULT NULL;
 ```
 
-- Managed through Domain Edit UI
-- Only super-admins can configure
+- Managed through Domain Edit UI (super-admin only)
 - Per-domain MFA policy override
+- `oidc_enabled` is a derived/virtual field — computed from whether `oidc_issuer_url` is non-empty
 
-### Design Decisions (Q&A)
-
-**Q: Why a separate `domain_oidc` table instead of adding fields to `domain`?**
-
-1. **Zero risk to existing data** — Adding 9 columns to `domain` (most NULL for non-OIDC domains) bloats a core table. New table = new code, no impact on existing deployments.
-2. **Follows existing pattern** — `domain_admins` is already a 1:1 extension table keyed by domain with ON DELETE CASCADE.
-3. **Clean separation** — OIDC config is a domain-lifecycle concern, not a domain-management concern. Keeping them apart means domain deletion cascades correctly without touching OIDC logic.
-4. **Migration safety** — Can be added/removed independently without ALTER TABLE on a production `domain` table.
-
-**Q: Why a separate `DomainOidcHandler` instead of folding into `DomainHandler`?**
-
-1. **Different lifecycle** — `DomainHandler` manages domain CRUD (create/delete, password expiry, CLI, search). `DomainOidcHandler` manages OIDC config CRUD (no CLI, no search, PK-scoped, super-admin only).
-2. **Different permissions** — Domain management is admin-scoped; OIDC config is super-admin only.
-3. **Implementation isolation** — Allowed developing and testing the OIDC feature without risking the working domain management code.
-4. **Different UI path** — OIDC config is a subsection of Domain Edit, not a full domain lifecycle view.
-
-**Q: `DomainOidcHandler` doesn't extend `PFAHandler` — name shouldn't end in `*Handler`**
-
-Good catch. Built standalone first to test OIDC config CRUD logic in isolation, with the plan to fold it into `PFAHandler` (proper subclass with `$db_table`, `$id_field`, etc.) before final merge. Currently a thin wrapper that doesn't use any `PFAHandler` machinery. Options:
-
-- Rename to `DomainOidcConfig` (plain model class)
-- Refactor to extend `PFAHandler` (proper upstream pattern, but more work)
-
-Open to either approach.
-
-### Admin Tracking
+### Admin Table
 
 ```sql
 ALTER TABLE admin ADD COLUMN oidc_issuer TEXT;
@@ -129,7 +103,7 @@ ALTER TABLE admin ADD COLUMN oidc_sub VARCHAR(255);
 
 - Records which IdP created the admin account
 - NULL = local password user
-- **Identity binding by issuer+sub** (stable, unique) instead of email
+- **Identity binding by issuer + sub** (stable, unique) instead of email
 
 ## Login Flow
 
@@ -139,7 +113,7 @@ User visits login page
 Sees "Login with SSO" button (global) and/or per-domain buttons
     ↓
 Option A: Global IdP button → authenticate → user gets their existing permissions
-Option B: Per-domain button (e.g., OrgA.com) → domain IdP → domain-admin
+Option B: Per-domain button (e.g., orgb.com) → domain IdP → domain-admin
     ↓
 Callback validates token
     ↓
@@ -216,29 +190,40 @@ CREATE TABLE admin_oidc (
 | Domain IdP | Create admin + insert into `domain_admins` for that domain |
 | Domain IdP + no auto_provision | Reject login, "Contact administrator" |
 
-## Tested Behavior
+## Login Page — Domain-Specific Buttons
 
-The following has been implemented and tested on a live instance:
+The login page iterates all domains with OIDC configured (i.e. `oidc_issuer_url` IS NOT NULL) and renders one button per domain:
 
-### Per-Domain OIDC Login
-- Configured two Keycloak realms: `OrgA` (global) and `OrgB` (per-domain)
-- Created `domain_oidc` entry for `orgb.com` pointing to OrgB realm
-- Logged in via `oidc_login.php?domain=orgb.com`
-- Result: User was authenticated by OrgB realm, added to `domain_admins` for `orgb.com`
-- **Confirmed:** Per-domain OIDC with auto-provisioning works end-to-end
+```
+Login with Keycloak (orgb.com)
+Login with Google (customer-example.com)
+```
 
-### Existing Account Matching
-- The callback matched an existing admin account by email (legacy behavior)
-- `admin.oidc_issuer` and `admin.oidc_sub` remained NULL
-- This is the `email` mode behavior — existing accounts are not upgraded with issuer+sub
-- **Confirmed:** Email fallback prevents duplicate accounts but doesn't bind OIDC identity
+**Why this works despite the "don't know the domain yet" concern:** We don't resolve the button to the user's domain dynamically. Instead, we pre-render one button per configured domain. Users click the button for their own domain. This avoids any pre-login domain detection while still providing domain-specific buttons with the configured `login_button_text`.
 
-### Configuration Switch Test (Planned)
-- Add `$CONF['oidc_identity']` config: `'email'` or `'issuer_sub'`
-- In `issuer_sub` mode, writing issuer+sub to an existing account that already has different issuer will:
-  - Lock out login from the original IdP (expected/intended behavior)
-  - Lock out login via email fallback (expected/intended behavior)
-- This is the security feature: each IdP is a separate identity space
+With few domains (1-5), this is clean. With many domains, it gets cluttered — an acceptable trade-off since per-domain OIDC is a multi-tenant feature used by hosting providers who want their customers to see their own branded button.
+
+## Implementation (revised per maintainer feedback)
+
+Following the maintainer's review, the architecture was simplified:
+
+- **No separate `domain_oidc` table** — columns added to `domain` directly (migration 1859)
+- **No `DomainOidcHandler` class** — OIDC config is handled by `DomainHandler` itself via the standard `pacol()`/`postSave()`/`read_from_db_postprocess()` framework. Super-admins get OIDC fields on the Domain Edit form; PFAHandler's `store()` writes them to the `domain` table automatically.
+- **`oidc_enabled` is a virtual field** — derived from whether `oidc_issuer_url` is non-empty (computed via SQL `CASE` in the SELECT). It has `not_in_db=1` and `dont_write_to_db=1`.
+- **`oidc_client_secret` uses `b64p` type** — framework handles base64 encoding on write and the `read_from_db_postprocess()` decodes it for form display. Empty password field on edit preserves existing value (b64p skips empty like `pass` type).
+- **MFA accessors on DomainHandler** — `getMfaMethods()`, `getMfaBlacklist()`, `getMfaPolicy()` read from `oidc_mfa_methods`/`oidc_mfa_blacklist`/`oidc_mfa_policy` columns with fallback to `$CONF['oidc_mfa*']` globals.
+
+### Files changed
+- `public/upgrade.php` — `upgrade_1859()` uses `_db_add_field()` for domain columns
+- `model/DomainHandler.php` — pacol fields, `read_from_db_postprocess` decodes secret + derives `oidc_enabled`, `postSave` no longer has separate OIDC block, MFA methods added
+- `model/DomainOidcHandler.php` — **deleted** (no longer needed)
+- `public/login.php` — queries domain table directly for OIDC configs
+- `public/oidc_login.php` — queries domain table directly for domain config
+- `public/oidc_callback.php` — queries domain table directly for MFA policy/methods
+- `templates/login.tpl` — uses `$config.oidc_login_button_text` (DB column name)
+- `tests/bootstrap.php` — `_db_add_field()` for test schema
+- `tests/DomainOidcTest.php` — replaces deleted `DomainOidcHandlerTest.php`, tests via DomainHandler
+- `DOCUMENTS/OIDC-Feature.md` — update design notes to match
 
 ## UI Changes
 
@@ -275,14 +260,3 @@ Existing global OIDC users:
 ## Scope
 
 This is a follow-up to PR #1144. The global OIDC in that PR becomes the "global admin" path. This proposal adds the per-domain layer.
-
-## Implementation Estimate (take with laughing salts)
-
-| Component | Effort |
-|-----------|--------|
-| Database schema + migration | 1 day |
-| Domain Edit UI | 1-2 days |
-| Login flow changes | 1-2 days |
-| Auto-provisioning logic | 1 day |
-| Tests | 1-2 days |
-| **Total** | **5-8 days** |

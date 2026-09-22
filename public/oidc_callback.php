@@ -24,23 +24,30 @@ if (empty($code) || empty($state)) {
     exit;
 }
 
-// Try to find domain-specific OIDC config by looking at state/session
+// Find domain-specific OIDC config from session
 $domainOidcConfig = null;
 if (isset($_SESSION['oidc_domain'])) {
-    $domainOidcHandler = new DomainOidcHandler($_SESSION['oidc_domain']);
-    if ($domainOidcHandler->exists()) {
-        $domainOidcConfig = $domainOidcHandler->get();
+    $table_domain = table_by_key('domain');
+    $domainOidcConfig = db_query_one(
+        "SELECT domain, oidc_issuer_url, oidc_client_id, oidc_client_secret, oidc_scopes, oidc_login_button_text, oidc_auto_provision, oidc_mfa_policy, oidc_mfa_methods, oidc_mfa_blacklist FROM $table_domain WHERE domain = ?",
+        [$_SESSION['oidc_domain']]
+    );
+    // Decode the secret for use
+    if ($domainOidcConfig) {
+        $domainOidcConfig['client_secret'] = base64_decode($domainOidcConfig['oidc_client_secret']);
+        // Normalize field names for MFA fallback logic
+        $domainOidcConfig['issuer_url'] = $domainOidcConfig['oidc_issuer_url'];
     }
 }
 
 // Use domain-specific config or fall back to global
 if ($domainOidcConfig) {
     $oidcConfig = [
-        'client_id' => $domainOidcConfig['client_id'],
+        'client_id' => $domainOidcConfig['oidc_client_id'],
         'client_secret' => $domainOidcConfig['client_secret'],
-        'issuer_url' => $domainOidcConfig['issuer_url'],
+        'issuer_url' => $domainOidcConfig['oidc_issuer_url'],
         'redirect_uri' => $CONF['oidc']['redirect_uri'] ?? '',
-        'scopes' => $domainOidcConfig['scopes'] ?? 'openid email profile',
+        'scopes' => $domainOidcConfig['oidc_scopes'] ?? 'openid email profile',
     ];
     $oidc = new OIDC($oidcConfig);
 } else {
@@ -144,7 +151,7 @@ if (empty($username)) {
         }
     }
 
-    $autoProvision = $domainOidcConfig ? ($domainOidcConfig['auto_provision'] ?? 0) : ($CONF['oidc_auto_provision'] ?? false);
+    $autoProvision = $domainOidcConfig ? (($domainOidcConfig['oidc_auto_provision'] ?? 0) ? 1 : 0) : ($CONF['oidc_auto_provision'] ?? false);
 
     if (!$autoProvision) {
         flash_error('You are not authorized to access this system. Contact an administrator.');
@@ -197,8 +204,10 @@ $mfa_used = false;
 
 // Use per-domain MFA methods if available, otherwise global
 if ($domainOidcConfig) {
-    $whitelist = (new DomainOidcHandler($domainOidcConfig['domain']))->getMfaMethods();
-    $blacklist = (new DomainOidcHandler($domainOidcConfig['domain']))->getMfaBlacklist();
+    $methodsRaw = $domainOidcConfig['oidc_mfa_methods'] ?? '';
+    $whitelist = !empty($methodsRaw) ? array_map('trim', explode(',', $methodsRaw)) : ($CONF['oidc_mfa_methods'] ?? []);
+    $blacklistRaw = $domainOidcConfig['oidc_mfa_blacklist'] ?? '';
+    $blacklist = !empty($blacklistRaw) ? array_map('trim', explode(',', $blacklistRaw)) : ($CONF['oidc_mfa_blacklist'] ?? []);
 } else {
     $whitelist = $CONF['oidc_mfa_methods'] ?? [];
     $blacklist = $CONF['oidc_mfa_blacklist'] ?? [];
@@ -217,7 +226,7 @@ if ($mfa_used) {
     init_session($username, true, true);
 } else {
     // Use per-domain MFA policy if available, otherwise global
-    $oidc_mfa = $domainOidcConfig ? (new DomainOidcHandler($domainOidcConfig['domain']))->getMfaPolicy() : ($CONF['oidc_mfa'] ?? 'none');
+    $oidc_mfa = $domainOidcConfig ? ($domainOidcConfig['oidc_mfa_policy'] ?? ($CONF['oidc_mfa'] ?? 'none')) : ($CONF['oidc_mfa'] ?? 'none');
 
     if ($oidc_mfa === 'idp_mfa') {
         // Must have IdP MFA — TOTP is not a fallback

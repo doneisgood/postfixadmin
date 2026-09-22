@@ -73,16 +73,14 @@ try {
 
 require_once(dirname(__FILE__) . '/../public/upgrade.php');
 
-// Create domain_oidc table for per-domain OIDC tests
-db_execute("CREATE TABLE IF NOT EXISTS domain_oidc (
-    domain VARCHAR(255) NOT NULL PRIMARY KEY,
-    issuer_url TEXT NOT NULL,
-    client_id VARCHAR(255) NOT NULL,
-    client_secret VARCHAR(255) NOT NULL,
-    scopes VARCHAR(255) DEFAULT 'openid email profile',
-    login_button_text VARCHAR(255) DEFAULT 'Login with SSO',
-    auto_provision SMALLINT DEFAULT 0,
-    mfa_policy VARCHAR(50) DEFAULT 'none',
-    mfa_methods TEXT DEFAULT NULL,
-    mfa_blacklist TEXT DEFAULT NULL
-)");
+// Add OIDC columns to domain table for tests (matches upgrade_1859)
+// Use _db_add_field which handles existence checks per-backend
+_db_add_field('domain', 'oidc_issuer_url', 'text DEFAULT NULL');
+_db_add_field('domain', 'oidc_client_id', 'varchar(255) DEFAULT NULL');
+_db_add_field('domain', 'oidc_client_secret', 'varchar(255) DEFAULT NULL');
+_db_add_field('domain', 'oidc_scopes', "varchar(255) DEFAULT 'openid email profile'");
+_db_add_field('domain', 'oidc_login_button_text', "varchar(255) DEFAULT 'Login with SSO'");
+_db_add_field('domain', 'oidc_auto_provision', 'smallint DEFAULT 0');
+_db_add_field('domain', 'oidc_mfa_policy', "varchar(50) DEFAULT 'none'");
+_db_add_field('domain', 'oidc_mfa_methods', 'text DEFAULT NULL');
+_db_add_field('domain', 'oidc_mfa_blacklist', 'text DEFAULT NULL');

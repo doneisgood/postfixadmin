@@ -2335,28 +2335,20 @@ function upgrade_1856()
 
 /**
  * Per-domain OIDC support
- * - domain_oidc table for per-domain IdP configuration
- * Create domain_oidc table and add oidc_issuer/oidc_sub to admin
+ * Add OIDC config columns to domain table and oidc_issuer/oidc_sub to admin
  */
 function upgrade_1859()
 {
-    $table_domain_oidc = table_by_key('domain_oidc');
-
-    // Create domain_oidc table
-    db_query_parsed("
-        CREATE TABLE {IF_NOT_EXISTS} $table_domain_oidc (
-            domain varchar(255) NOT NULL PRIMARY KEY,
-            issuer_url text NOT NULL,
-            client_id varchar(255) NOT NULL,
-            client_secret varchar(255) NOT NULL,
-            scopes varchar(255) NOT NULL DEFAULT 'openid email profile',
-            login_button_text varchar(255) DEFAULT 'Login with SSO',
-            auto_provision smallint NOT NULL DEFAULT 0,
-            mfa_policy varchar(50) DEFAULT 'none',
-            mfa_methods text DEFAULT NULL,
-            mfa_blacklist text DEFAULT NULL
-        ) {COLLATE};
-    ");
+    // Add OIDC config columns to domain table
+    _db_add_field('domain', 'oidc_issuer_url',  'text DEFAULT NULL');
+    _db_add_field('domain', 'oidc_client_id',   'varchar(255) DEFAULT NULL');
+    _db_add_field('domain', 'oidc_client_secret', 'varchar(255) DEFAULT NULL');
+    _db_add_field('domain', 'oidc_scopes',      'varchar(255) DEFAULT \'openid email profile\'');
+    _db_add_field('domain', 'oidc_login_button_text', 'varchar(255) DEFAULT \'Login with SSO\'');
+    _db_add_field('domain', 'oidc_auto_provision',  'smallint DEFAULT 0');
+    _db_add_field('domain', 'oidc_mfa_policy',  'varchar(50) DEFAULT \'none\'');
+    _db_add_field('domain', 'oidc_mfa_methods', 'text DEFAULT NULL');
+    _db_add_field('domain', 'oidc_mfa_blacklist', 'text DEFAULT NULL');
 
     // Add oidc_issuer and oidc_sub columns to admin table
     _db_add_field('admin', 'oidc_issuer', 'text DEFAULT NULL');

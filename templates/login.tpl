@@ -55,7 +55,7 @@
                 {foreach from=$domain_oidc_configs item=config}
                     <a class="btn btn-outline-secondary mb-1" href="oidc_login.php?domain={$config.domain|urlencode}">
                         <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span>
-                        {$config.login_button_text|default:'Login with SSO'} ({$config.domain})
+                        {$config.oidc_login_button_text|default:'Login with SSO'} ({$config.domain})
                     </a>
                 {/foreach}
             </div>

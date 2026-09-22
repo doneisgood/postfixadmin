@@ -19,20 +19,19 @@ if (!in_array('oidc', $CONF['additional_auth'] ?? [])) {
 $domain = $_GET['domain'] ?? '';
 
 if ($domain) {
-    // Domain-specific login
-    $domainOidcHandler = new DomainOidcHandler($domain);
-    if (!$domainOidcHandler->exists()) {
+    // Domain-specific login — query domain table directly
+    $table_domain = table_by_key('domain');
+    $domainConfig = db_query_one("SELECT * FROM $table_domain WHERE domain = ?", [$domain]);
+    if (!$domainConfig || empty($domainConfig['oidc_issuer_url'])) {
         header('Location: login.php');
         exit;
     }
-
-    $domainConfig = $domainOidcHandler->get();
     $oidcConfig = [
-        'client_id' => $domainConfig['client_id'],
-        'client_secret' => $domainConfig['client_secret'],
-        'issuer_url' => $domainConfig['issuer_url'],
+        'client_id' => $domainConfig['oidc_client_id'],
+        'client_secret' => base64_decode($domainConfig['oidc_client_secret']),
+        'issuer_url' => $domainConfig['oidc_issuer_url'],
         'redirect_uri' => $CONF['oidc']['redirect_uri'] ?? '',
-        'scopes' => $domainConfig['scopes'] ?? 'openid email profile',
+        'scopes' => $domainConfig['oidc_scopes'] ?? 'openid email profile',
     ];
     $oidc = new OIDC($oidcConfig);
 
