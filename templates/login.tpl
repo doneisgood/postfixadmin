@@ -53,7 +53,7 @@
             <div class="text-center">
                 <p class="text-muted">Or login with a domain-specific provider:</p>
                 {foreach from=$domain_oidc_configs item=config}
-                    <a class="btn btn-outline-secondary mb-1" href="oidc_login.php?domain={$config.domain|urlencode}">
+                    <a class="btn btn-outline-secondary mb-1" href="oidc_login.php?domain={$config.domain_encoded}">
                         <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span>
                         {$config.oidc_login_button_text|default:'Login with SSO'} ({$config.domain})
                     </a>

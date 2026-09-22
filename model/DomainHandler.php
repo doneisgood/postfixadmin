@@ -164,7 +164,7 @@ class DomainHandler extends PFAHandler
                 /*select*/ $this->is_superadmin . ' as _can_delete'),
 
             # Per-domain OIDC configuration (stored directly in domain table)
-            'oidc_enabled'     => self::pacol($super,     $super, 0,      'bool', 'oidc_enable'                  , ''                                 , 0, array(), 1, 1,
+            'oidc_enabled'     => self::pacol($super,     $super, 0,      'bool', 'oidc_enable'                  , ''                                 , 0, array(), 1, 1),
             'oidc_issuer_url'  => self::pacol($super,     $super, 0,      'text', 'oidc_issuer_url'              , 'oidc_issuer_url_desc'             , '', array(), 0, 0),
             'oidc_client_id'   => self::pacol($super,     $super, 0,      'text', 'oidc_client_id'               , ''                                 , '', array(), 0, 0),
             'oidc_client_secret' => self::pacol($super, $super, 0, 'b64p', 'oidc_client_secret', 'oidc_client_secret_desc', '', array(), 0, 0),
