@@ -170,7 +170,7 @@ class DomainHandler extends PFAHandler
             'oidc_client_secret' => self::pacol($super, $super, 0, 'b64p', 'oidc_client_secret', 'oidc_client_secret_desc', '', array(), 0, 0),
             'oidc_scopes'      => self::pacol($super,     $super, 0,      'text', 'oidc_scopes'                  , ''                                 , 'openid email profile', array(), 0, 0),
             'oidc_login_button_text' => self::pacol($super, $super, 0, 'text', 'oidc_login_button_text'      , ''                                 , 'Login with SSO', array(), 0, 0),
-            'oidc_auto_provision' => self::pacol($super,  $super, 0,      'bool', 'oidc_auto_provision'          , 'oidc_auto_provision_desc'         , 0, array(), 0, 0),
+            'oidc_auto_provision'  => self::pacol($super,     $super, 0,      'bool', 'oidc_auto_provision'          , 'oidc_auto_provision_desc'         , 0),
             'oidc_mfa_policy'  => self::pacol($super,     $super, 0,      'enum', 'oidc_mfa_policy'              , ''                                 , 'none',
                 /*options*/ array('none' => 'none', 'mfa_or_totp' => 'mfa_or_totp', 'idp_mfa' => 'idp_mfa')),
             'oidc_mfa_methods' => self::pacol($super,     $super, 0,      'text', 'oidc_mfa_methods'             , ''                                 , '', array(), 0, 0),
