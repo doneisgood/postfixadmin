@@ -80,7 +80,7 @@ _db_add_field('domain', 'oidc_client_id', 'varchar(255) DEFAULT NULL');
 _db_add_field('domain', 'oidc_client_secret', 'varchar(255) DEFAULT NULL');
 _db_add_field('domain', 'oidc_scopes', "varchar(255) DEFAULT 'openid email profile'");
 _db_add_field('domain', 'oidc_login_button_text', "varchar(255) DEFAULT 'Login with SSO'");
-_db_add_field('domain', 'oidc_auto_provision', 'smallint DEFAULT 0');
+_db_add_field('domain', 'oidc_auto_provision', 'boolean DEFAULT 0');
 _db_add_field('domain', 'oidc_mfa_policy', "varchar(50) DEFAULT 'none'");
 _db_add_field('domain', 'oidc_mfa_methods', 'text DEFAULT NULL');
 _db_add_field('domain', 'oidc_mfa_blacklist', 'text DEFAULT NULL');
