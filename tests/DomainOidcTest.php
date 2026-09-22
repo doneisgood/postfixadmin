@@ -147,7 +147,7 @@ class DomainOidcTest extends TestCase
             'oidc_client_id' => '',
             'oidc_client_secret' => '',
         ]);
-        $handler2->store();
+        $handler2->save();
 
         $table = table_by_key('domain');
         $row = db_query_one("SELECT oidc_issuer_url FROM $table WHERE domain = ?", [$this->testDomain]);

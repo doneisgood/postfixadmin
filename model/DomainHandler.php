@@ -286,7 +286,7 @@ class DomainHandler extends PFAHandler
      */
     public function getMfaMethods(): array
     {
-        $methods = $this->values['oidc_mfa_methods'] ?? null;
+        $methods = $this->result['oidc_mfa_methods'] ?? null;
         if (!empty($methods)) {
             return array_map('trim', explode(',', $methods));
         }
@@ -299,7 +299,7 @@ class DomainHandler extends PFAHandler
      */
     public function getMfaBlacklist(): array
     {
-        $blacklist = $this->values['oidc_mfa_blacklist'] ?? null;
+        $blacklist = $this->result['oidc_mfa_blacklist'] ?? null;
         if (!empty($blacklist)) {
             return array_map('trim', explode(',', $blacklist));
         }
@@ -312,7 +312,7 @@ class DomainHandler extends PFAHandler
      */
     public function getMfaPolicy(): string
     {
-        $policy = $this->values['oidc_mfa_policy'] ?? null;
+        $policy = $this->result['oidc_mfa_policy'] ?? null;
         if (!empty($policy)) {
             return $policy;
         }
