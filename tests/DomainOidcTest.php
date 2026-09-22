@@ -49,7 +49,7 @@ class DomainOidcTest extends TestCase
             'oidc_client_id' => 'test-client',
             'oidc_client_secret' => 'test-secret',
         ]);
-        $this->assertTrue($handler->store());
+        $this->assertTrue($handler->save());
 
         // Verify by direct DB query
         $table = table_by_key('domain');
@@ -72,7 +72,7 @@ class DomainOidcTest extends TestCase
             'oidc_client_id' => 'old-client',
             'oidc_client_secret' => 'old-secret',
         ]);
-        $handler->store();
+        $handler->save();
 
         $handler->init($this->testDomain);
         $handler->set([
@@ -81,7 +81,7 @@ class DomainOidcTest extends TestCase
             'oidc_client_id' => 'new-client',
             'oidc_client_secret' => 'new-secret',
         ]);
-        $handler->store();
+        $handler->save();
 
         $table = table_by_key('domain');
         $row = db_query_one("SELECT oidc_issuer_url, oidc_client_id, oidc_client_secret FROM $table WHERE domain = ?", [$this->testDomain]);
@@ -102,7 +102,7 @@ class DomainOidcTest extends TestCase
             'oidc_client_id' => 'client',
             'oidc_client_secret' => 'secret',
         ]);
-        $handler->store();
+        $handler->save();
 
         // Reload and check oidc_enabled is derived
         $handler2 = new DomainHandler();
@@ -136,7 +136,7 @@ class DomainOidcTest extends TestCase
             'oidc_client_id' => 'client',
             'oidc_client_secret' => 'secret',
         ]);
-        $handler->store();
+        $handler->save();
 
         // Then: disable by setting oidc_enabled = 0
         $handler2 = new DomainHandler();
@@ -179,7 +179,7 @@ class DomainOidcTest extends TestCase
             'oidc_client_secret' => 'secret',
             'oidc_mfa_methods' => 'mfa,fido,face',
         ]);
-        $handler->store();
+        $handler->save();
 
         $handler2 = new DomainHandler();
         $handler2->init($this->testDomain);
@@ -212,7 +212,7 @@ class DomainOidcTest extends TestCase
             'oidc_client_secret' => 'secret',
             'oidc_mfa_policy' => 'idp_mfa',
         ]);
-        $handler->store();
+        $handler->save();
 
         $handler2 = new DomainHandler();
         $handler2->init($this->testDomain);
@@ -233,7 +233,7 @@ class DomainOidcTest extends TestCase
             'oidc_client_secret' => 'secret',
             'oidc_mfa_blacklist' => 'sms,email,pin',
         ]);
-        $handler->store();
+        $handler->save();
 
         $handler2 = new DomainHandler();
         $handler2->init($this->testDomain);
